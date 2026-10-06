@@ -1,0 +1,183 @@
+---
+title: "Social Web Analytics Projet"
+author: "Phuong Linh Le"
+date: "2026-10-05"
+output: pdf_document
+---
+
+```{r}
+install.packages("atrrr")
+library(atrrr)
+```
+```{r}
+bsky_app_pw <- "styp-ywcu-yh2u-zndz"
+
+auth(
+  user = "phuonglinhle.bsky.social",
+  password = bsky_app_pw
+)
+```
+```{r}
+alfred_test <- search_skeet(
+  "Cyclone Alfred",
+  sort = "latest",
+  since = "2025-02-23",
+  limit = 100
+)
+```
+```{r}
+dim(alfred_test)
+```
+```{r}
+names(alfred_test)
+```
+```{r}
+head(alfred_test[, c(
+  "created_at",
+  "author_handle",
+  "text",
+  "reply_count",
+  "repost_count",
+  "like_count"
+)])
+```
+```{r}
+range(alfred_test$created_at)
+```
+```{r}
+head(sort(alfred_test$created_at))
+tail(sort(alfred_test$created_at))
+```
+```{r}
+args(search_skeet)
+```
+```{r}
+alfred_event <- search_skeet(
+  "Cyclone Alfred",
+  sort = "latest",
+  since = "2025-02-23",
+  until = "2025-03-17",
+  limit = 500
+)
+```
+```{r}
+# 1. Kích thước dataset
+dim(alfred_event)
+
+# 2. Khoảng thời gian thực tế
+range(alfred_event$created_at, na.rm = TRUE)
+
+# 3. Số người đăng khác nhau
+length(unique(alfred_event$author_handle))
+
+# 4. Số post theo ngày
+table(as.Date(alfred_event$created_at))
+```
+```{r}
+# Có bao nhiêu posts là reply?
+sum(!is.na(alfred_event$in_reply_to))
+
+# Tổng số replies nhận được
+sum(alfred_event$reply_count, na.rm = TRUE)
+
+# Tổng số reposts
+sum(alfred_event$repost_count, na.rm = TRUE)
+
+# Tổng số quotes
+sum(alfred_event$quote_count, na.rm = TRUE)
+
+# Có bao nhiêu posts chứa mentions?
+sum(lengths(alfred_event$mentions) > 0, na.rm = TRUE)
+
+# Có bao nhiêu posts chứa links?
+sum(lengths(alfred_event$links) > 0, na.rm = TRUE)
+```
+```{r}
+alfred_before <- search_skeet(
+  "Cyclone Alfred",
+  sort = "latest",
+  since = "2025-02-23",
+  until = "2025-03-05",
+  limit = 500
+)
+```
+```{r}
+dim(alfred_before)
+range(alfred_before$created_at, na.rm = TRUE)
+length(unique(alfred_before$author_handle))
+```
+```{r}
+alfred_23feb <- search_skeet(
+  "Cyclone Alfred",
+  sort = "latest",
+  since = "2025-02-23",
+  until = "2025-02-24",
+  limit = 500
+)
+```
+```{r}
+dim(alfred_23feb)
+range(alfred_23feb$created_at, na.rm = TRUE)
+```
+```{r}
+dates <- seq(
+  as.Date("2025-02-23"),
+  as.Date("2025-03-16"),
+  by = "day"
+)
+
+alfred_daily <- vector("list", length(dates))
+
+for (i in seq_along(dates)) {
+  
+  start_date <- dates[i]
+  end_date <- start_date + 1
+  
+  cat("Collecting:", as.character(start_date), "\n")
+  
+  alfred_daily[[i]] <- search_skeet(
+    "Cyclone Alfred",
+    sort = "latest",
+    since = as.character(start_date),
+    until = as.character(end_date),
+    limit = 1000
+  )
+}
+```
+```{r}
+library(dplyr)
+
+alfred_all <- bind_rows(alfred_daily)
+
+dim(alfred_all)
+
+range(alfred_all$created_at, na.rm = TRUE)
+
+length(unique(alfred_all$author_handle))
+
+sum(duplicated(alfred_all$uri))
+```
+```{r}
+table(as.Date(alfred_all$created_at))
+```
+```{r}
+sum(!is.na(alfred_all$in_reply_to))
+
+sum(alfred_all$reply_count, na.rm = TRUE)
+
+sum(alfred_all$repost_count, na.rm = TRUE)
+
+sum(alfred_all$quote_count, na.rm = TRUE)
+
+sum(lengths(alfred_all$mentions) > 0, na.rm = TRUE)
+
+sum(lengths(alfred_all$links) > 0, na.rm = TRUE)
+```
+```{r}
+saveRDS(alfred_all, "alfred_all.rds")
+```
+sau này mở rstudio để làm chỉ cần alfred_all <- readRDS("alfred_all.rds")
+```{r}
+file.exists("alfred_all.rds")
+```
+
