@@ -607,18 +607,16 @@ rq1_corpus <- tm_map(
 )
 ```
 ```{r}
+
 # Remove residual query terms after stemming
 rq1_corpus <- tm_map(
   rq1_corpus,
   removeWords,
-  c("cyclonealfr", "tcalfr")
+  c("cyclonealfr", "tcalfr", "cyclon")
 )
 
-# Remove extra whitespace
-rq1_corpus <- tm_map(
-  rq1_corpus,
-  stripWhitespace
-)
+rq1_corpus <- tm_map(rq1_corpus, stripWhitespace)
+
 ```
 
 ## 4 - Final Term-Frequency Analysis
