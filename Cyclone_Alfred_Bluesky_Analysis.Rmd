@@ -3,17 +3,18 @@ title: "Social Web Analytics Projet"
 author: "Phuong Linh Le"
 date: "2026-10-05"
 output:
-  pdf_document: default
+  pdf_document:
+    latex_engine: "xelatex"
   html_document:
     df_print: paged
 ---
 
-```{r}
-install.packages("atrrr")
+```{r, eval=FALSE}
+# Load the package used for Bluesky data collection
 library(atrrr)
 ```
 
-```{r}
+```{r, eval=FALSE}
 # Initial API test - Retrieve a small sample to inspect the Bluesky data structure
 alfred_test <- search_skeet(
   "Cyclone Alfred",
@@ -42,12 +43,12 @@ head(sort(alfred_test$created_at))
 tail(sort(alfred_test$created_at))
 ```
 
-```{r}
+```{r, eval=FALSE}
 # Inspect the available arguments of search_skeet before defining the collection period
 args(search_skeet)
 ```
 
-```{r}
+```{r, eval=FALSE}
 # Test retrieval across the full event period using a single API request
 alfred_event <- search_skeet(
   "Cyclone Alfred",
@@ -64,7 +65,7 @@ length(unique(alfred_event$author_handle))
 table(as.Date(alfred_event$created_at))
 ```
 
-```{r}
+```{r, eval=FALSE}
 # 1. Check the dataset size
 dim(alfred_event)
 # 2. Check the actual date range
@@ -75,7 +76,7 @@ length(unique(alfred_event$author_handle))
 table(as.Date(alfred_event$created_at))
 ```
 
-```{r}
+```{r, eval=FALSE}
 # Check the number of posts that are replies
 sum(!is.na(alfred_event$in_reply_to))
 # Calculate the total number of replies received
@@ -90,7 +91,7 @@ sum(lengths(alfred_event$mentions) > 0, na.rm = TRUE)
 sum(lengths(alfred_event$links) > 0, na.rm = TRUE)
 ```
 
-```{r}
+```{r, eval=FALSE}
 # Test data retrieval for the earlier period of the event
 alfred_before <- search_skeet(
   "Cyclone Alfred",
@@ -100,7 +101,7 @@ alfred_before <- search_skeet(
   limit = 500
 )
 ```
-```{r}
+```{r, eval=FALSE}
 # Check the dataset size
 dim(alfred_before)
 # Check the actual date range returned
@@ -108,7 +109,7 @@ range(alfred_before$created_at, na.rm = TRUE)
 # Check the number of unique authors
 length(unique(alfred_before$author_handle))
 ```
-```{r}
+```{r, eval=FALSE}
 # Test data retrieval using a one-day search window
 alfred_23feb <- search_skeet(
   "Cyclone Alfred",
@@ -118,7 +119,7 @@ alfred_23feb <- search_skeet(
   limit = 500
 )
 ```
-```{r}
+```{r, eval=FALSE}
 # Check the dataset size
 dim(alfred_23feb)
 # Check the actual date range returned
@@ -127,7 +128,7 @@ range(alfred_23feb$created_at, na.rm = TRUE)
 length(unique(alfred_23feb$author_handle))
 ```
 
-```{r}
+```{r, eval=FALSE}
 # Create a sequence of dates covering the full study period
 dates <- seq(
   as.Date("2025-02-23"),
@@ -154,7 +155,7 @@ for (i in seq_along(dates)) {
 }
 ```
 
-```{r}
+```{r, eval=FALSE}
 # Load dplyr for data manipulation
 library(dplyr)
 # Combine all daily search results into one final dataset
@@ -169,12 +170,12 @@ length(unique(alfred_all$author_handle))
 sum(duplicated(alfred_all$uri))
 ```
 
-```{r}
+```{r, eval=FALSE}
 # Check the number of posts collected per day
 table(as.Date(alfred_all$created_at))
 ```
 
-```{r}
+```{r, eval=FALSE}
 # Check the number of posts that are replies
 sum(!is.na(alfred_all$in_reply_to))
 # Calculate the total number of replies received
@@ -189,7 +190,7 @@ sum(lengths(alfred_all$mentions) > 0, na.rm = TRUE)
 sum(lengths(alfred_all$links) > 0, na.rm = TRUE)
 ```
 
-```{r}
+```{r, eval=FALSE}
 # Save the final collected dataset for subsequent analysis
 file.exists("alfred_all.rds")
 ```
@@ -605,6 +606,21 @@ rq1_corpus <- tm_map(
   stemDocument
 )
 ```
+```{r}
+# Remove residual query terms after stemming
+rq1_corpus <- tm_map(
+  rq1_corpus,
+  removeWords,
+  c("cyclonealfr", "tcalfr")
+)
+
+# Remove extra whitespace
+rq1_corpus <- tm_map(
+  rq1_corpus,
+  stripWhitespace
+)
+```
+
 ## 4 - Final Term-Frequency Analysis
 
 After the final preprocessing steps, the Term-Document Matrix and term frequencies were recalculated.
@@ -680,6 +696,9 @@ rq1_top20_df[, c("term", "display_term", "frequency")]
 The final term frequencies were visualised using a horizontal bar chart to compare the relative prominence of the 20 most frequent terms.
 
 ```{r}
+# Load packages for data visualisation
+library(ggplot2)
+library(RColorBrewer)
 # Visualise the Top 20 most frequent terms
 ggplot(
   rq1_top20_df,
@@ -808,12 +827,14 @@ dim(rq1_context_review)
 ```
 
 ```{r}
-# Display the reviewed posts with their IDs for contextual interpretation
+# Display reviewed posts with safe text encoding
 rq1_context_review %>%
+  mutate(text = iconv(text, from = "UTF-8",
+                      to = "ASCII", sub = "")) %>%
   select(post_id, text) %>%
   print(n = 30, width = Inf)
 ```
-The contextual review provided further support for four recurring information themes: **storm tracking and weather updates, preparedness and warnings, impacts and disruption, and post-event impacts and recovery**. Posts included changing forecasts and landfall conditions, preparation for possible power outages, flooding and transport disruption, and later discussion of clean-up and restoration. The sample was used to support interpretation of the broader term-frequency patterns rather than to estimate how common each theme was across the full dataset.
+The contextual review provided further support for 4 recurring information themes: **storm tracking and weather updates, preparedness and warnings, impacts and disruption, and post-event impacts and recovery**. Posts included changing forecasts and landfall conditions, preparation for possible power outages, flooding and transport disruption, and later discussion of clean-up and restoration. The sample was used to support interpretation of the broader term-frequency patterns rather than to estimate how common each theme was across the full dataset.
 
 ### RQ1 Summary
 
