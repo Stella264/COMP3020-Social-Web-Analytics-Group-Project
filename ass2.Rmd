@@ -604,12 +604,55 @@ plot(interaction_network,vertex.size = 5,
 ```
 The network graph shows the interactions between users. Each node represents a user, and each arrow represents a reply or mention. The graph shows that the network contains many small and separated connections, which is consistent with the low network density.
 
+*Plot subgraph*
+```{r}
+# Identify connected components in the network
+network_components <- components(
+  interaction_network,
+  mode = "weak"
+)
+
+# Select the largest connected component
+largest_component <- which.max(network_components$csize)
+
+# Create a subgraph containing its users
+network_subgraph <- induced_subgraph(
+  interaction_network,
+  vids = V(interaction_network)[
+    network_components$membership == largest_component
+  ]
+)
+
+# Display the subgraph size
+network_subgraph
+```
+```{r}
+# Visualise the largest connected subgraph
+set.seed(123)
+
+plot(
+  network_subgraph,
+  layout = layout_with_fr(network_subgraph),
+  vertex.size = 12,
+  vertex.label = V(network_subgraph)$name,
+  vertex.label.cex = 0.6,
+  vertex.color = "skyblue",
+  edge.arrow.size = 0.4,
+  main = "Largest Connected Component of User Interaction Network"
+)
+```
+
+The largest weakly connected component was selected as a subgraph to examine the most connected part of the observed user interaction network. This approach allows the relationships between users to be visualised more clearly while retaining the original direction of reply and mention interactions.
+
+
 *Interpretation*
 The network analysis provides an overall view of how identifiable users interacted during the Tropical Cyclone Alfred discussion. The final network contained 125 users and 94 reply or mention interaction edges.The result above show that the network density was only 0.0061, which indicated that the observed interaction network was sparse. This suggests that the discussion captured in this dataset did not form one highly interconnected user network. Instead, many interactions appeared as smaller or separated connections, it can also be seen in the network visualisation.
 
 However, the low density does not mean that all users had equally limited roles. In addition, the degree centrality identified several accounts with relatively high levels of direct interaction 'thesaturdaypaper.com.au' had the highest degree score , which is 11 direct connection, followed by 'peggysanders.bsky.social' and 'theguardian.com' is 6 direct connection. It demonstrates that even within a sparse network, some accounts occupied more central positions through a larger number of direct interaction edges.
 
 Betweenness centrality shows a different side of how users are positioned in the network. The 'zoom.earth' had the highest betweenness score, which has 6, followed by 'trishgreenhalgh.bsky.social' and 'australia.theguardian.com' has 4. Futhermore, these were not the same accounts that had the highest degree scores. This suggests that having more direct interaction edges does not always mean that an account also has a stronger bridging role. For example, 'thesaturdaypaper.com.au' had the highest degree score, which means it had more direct interactions, while zoom.earth appeared to have a stronger bridging position because it was located on more shortest paths between users. This shows why looking at more than one centrality measure is useful when trying to understand the role of users in the network.
+
+To examine the interaction structure more closely, the largest weakly connected component was selected as a subgraph. This component was chosen because it represents the largest group of users connected through identifiable reply or mention relationships, regardless of edge direction. The subgraph contained 11 users and 10 directed edges, representing only a small portion of the full network of 125 users. The visualisation shows that several accounts were connected through users such as 'zoom.earth' and 'trishgreenhalgh.bsky.social', rather than all users interacting directly with one another. This provides further evidence that the observed network was fragmented, with even its largest connected component containing relatively few users.
 
 These findings also need to be considered together with the limitations of the collected data. The network only includes reply and mention relationships that could be matched to users in the dataset. For example, only 128 out of 526 reply posts could be matched to a parent post, and only 57 mention targets could be identified from the available author information. This means that the network does not capture every interaction that happened on Bluesky during Tropical Cyclone Alfred. Therefore, the low density should mainly be understood as low connectivity within the interactions that could be identified in this dataset, rather than suggesting that Bluesky users generally interacted very little during the event.
 
