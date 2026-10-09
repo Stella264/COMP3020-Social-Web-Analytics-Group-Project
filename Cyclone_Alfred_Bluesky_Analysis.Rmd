@@ -616,21 +616,46 @@ The bar chart highlights the high frequency of geographic and weather-related te
 A word cloud was created as a supplementary visualisation of the most frequent words, where larger text representing higher term frequencies.
 ```{r}
 library(wordcloud)
-# Prepare data
+# Create word cloud data from RQ1 term frequencies
+rq1_wc <- data.frame(
+  term = names(rq1_term_frequency),
+  frequency = as.numeric(rq1_term_frequency)
+)
+# Apply readable labels from Top 20
+rq1_wc$display_term <- rq1_wc$term
+matched <- match(rq1_wc$term, rq1_top20_df$term)
+rq1_wc$display_term[!is.na(matched)] <-
+  rq1_top20_df$display_term[matched[!is.na(matched)]]
+# Additional readable labels
+extra_labels <- c(
+  "prepar" = "Preparation",
+  "resid" = "Residents",
+  "peopl" = "People",
+  "extrop" = "Ex-tropical",
+  "updat" = "Update",
+  "forecast" = "Forecast",
+  "warn" = "Warning",
+  "southeast" = "Southeast"
+)
+idx <- match(rq1_wc$term, names(extra_labels))
+rq1_wc$display_term[!is.na(idx)] <-unname(extra_labels[idx[!is.na(idx)]])
+# Select top 40 terms
+rq1_wc <- rq1_wc[rq1_wc$term != "cyclonealfr",]
 rq1_wc <- rq1_wc[order(-rq1_wc$frequency), ]
 rq1_wc <- head(rq1_wc, 40)
 # Colour palette
 wc_palette <- c(
-  "#F29D38",  # Orange
-  "#E96C91",  # Pink
-  "#16A6A0",  # Teal
-  "#8054B8",  # Purple
-  "#238BC4",  # Blue
-  "#183F78"   # Navy
+  "#F29D38",
+  "#E96C91",
+  "#16A6A0",
+  "#8054B8",
+  "#238BC4",
+  "#183F78"
 )
-# Assign one colour to each word
 set.seed(123)
-word_colors <- sample(rep(wc_palette, length.out = nrow(rq1_wc)))
+word_colors <- sample(
+  rep(wc_palette, length.out = nrow(rq1_wc))
+)
 # Create word cloud
 set.seed(123)
 wordcloud(
