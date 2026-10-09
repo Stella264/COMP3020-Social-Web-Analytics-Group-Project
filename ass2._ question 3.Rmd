@@ -407,8 +407,12 @@ Degree centrality results show that the account 'thesaturdaypaper.com.au' has th
 Overall, the results show that the interaction network observed for RQ3 is not densely connected, but is rather divided into a number of small clusters. Some accounts have many direct connections, but they are not necessarily the most salient ones as bridging nodes.The study has also two important limitations, however. First, the data collected does not cover all interactions with Bluesky or about Storm Alfred, and therefore may not be a true picture of user activity on the platform. Second, some “reply” and “mention” interactions were not included in the method of network construction due to the inability to match the target accounts in the data. This could have influenced the number of connections, the network topology, and centrality measures, and therefore the total picture observed.
 As such, the results should be considered only in the context of the network created and not be extrapolated to the Bluesky as a whole.
  
+*References*
+Das, K, Samanta, S & Pal, M 2018, ‘Study on centrality measures in social networks: a survey’, Social Network Analysis and Mining, vol. 8, article 13, viewed 9 October 2026, https://doi.org/10.1007/s13278-018-0493-2.
 
+Himelboim, I, Smith, MA, Rainie, L, Shneiderman, B & Espina, C 2017, ‘Classifying Twitter topic-networks using social network analysis’, Social Media + Society, vol. 3, no. 1, pp. 1–13, viewed 9 October 2026, https://doi.org/10.1177/2056305117691545.
 
+Smith, JA, Moody, J & Morgan, J 2017, ‘Network sampling coverage II: the effect of non-random missing data on network measurement’, Social Networks, vol. 48, pp. 78–99, viewed 9 October 2026, https://doi.org/10.1016/j.socnet.2016.04.005.
 
 
 
