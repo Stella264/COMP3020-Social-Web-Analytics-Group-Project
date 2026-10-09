@@ -1,0 +1,482 @@
+---
+title: "COMP 3022-Assessment 2"
+author: "Tran Truc Thanh DINH"
+date: "2026-10-06"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(atrrr)
+library(tidyverse)
+
+```
+
+#login Bluesky
+```{r}
+# Authentication was used during data collection
+# auth()
+```
+
+
+
+```{r}
+alfred_all <- readRDS("Data/alfred_all.rds")
+
+dim(alfred_all)
+
+names(alfred_all)
+
+length(unique(alfred_all$author_handle))
+
+range(alfred_all$created_at, na.rm = TRUE)
+
+```
+Load data
+```{r}
+# Load required package
+library(dplyr)
+# Load the shared dataset
+alfred_all_raw <- readRDS("Data/alfred_all.rds")
+# Create a working copy
+alfred_all <- alfred_all_raw
+# Initial check
+dim(alfred_all)
+
+```
+
+
+
+***Question 3***
+**Check Reply Interactions**
+
+```{r}
+library(dplyr)
+library(igraph)
+# Loading the shared master dataset from the data foller
+alfred_all_raw <- readRDS("Data/alfred_all.rds")
+#Creating a working copy for analysis while keeping the raw dataset unchanged
+alfred_all <- alfred_all_raw
+```
+this step will help people know that checking how reply information is stored in the dataset, before using it to construct network edges. For example, if the user A replies to a post written by the user B, this creates the directed relationship from user A to user B. The direction is import that, because the interaction start from the replying the user likely source to the user being replied to target. Therefore, if the reply information allows us to identify both users, each reply can possibility become a directed edge in the interaction network. At the same time, we are only checking whether the dataset contains enough information to identify this source with target relationship, we have not constructed the network yet.
+
+```{r}
+# This tells us how 'in_reply_to' is stored in the dataset
+class(alfred_all$in_reply_to)
+
+# Inspect the structure of the reply variable
+# This provides more detail about the variable and helps us understand what type of identifiers are stored in it.
+head(na.omit(alfred_all$in_reply_to),10)
+
+# Identify posts that are replies
+reply_rows <- which(
+  !is.na(alfred_all$in_reply_to))
+
+#Count the number of reply posts
+# This step will help we know that how many posts in the collected dataset and containing a recorded reply relationship 
+reply_posts <- length(reply_rows)
+reply_posts
+
+#Inspect the first 10 reply identifiers
+reply_rows <- which(
+  !is.na(alfred_all$in_reply_to))
+#some post do not reply like NA value are excluded
+```
+
+```{r}
+names(alfred_all)
+nrow(alfred_all)
+# What type is each candidate interaction column?
+class(alfred_all$quotes)
+class(alfred_all$mentions)
+
+# Look at the first few values of each (short output only)
+head(alfred_all$quotes, 5)
+head(alfred_all$mentions, 5)
+```
+-> This step will help we demonstrates that 5 rows just have NA and Null value, so we donot know that the quote or mention have frequent or not. Currently, the result only have 526 replies out of 7,019 posts- approximately 7.5%. However, this result only tells us about replies. We still need to check mentions and quotes separately. 
+
+*Match reply target with posts in our dataset*
+```{r}
+# Match each reply target with a post in our dataset
+reply_parent_match <- match(
+  alfred_all$in_reply_to[reply_rows],
+  alfred_all$uri
+)
+
+# Count how many parent posts were successfully matched
+reply_parents_found <- sum(
+  !is.na(reply_parent_match)
+)
+
+reply_parents_found
+
+# Calculate the proportion of successfully matched replies
+reply_mapping_rate <- 
+  reply_parents_found / length(reply_rows)
+
+reply_mapping_rate
+
+```
+From the result above, the result show that 128 out of 526 reply tagets were successfully matched with the posts, when we collected the dataset, which having a mapping rate of about 24.3%. For these 128 replies, we can use the matched parent posts to identify who was being replied to. The other reply targets were not found in the collected dataset, so their target users cannot be identified from the available data.
+
+*Identify Reply Users*
+
+```{r}
+# Create a table to inspect reply relationships
+reply_check <- data.frame(
+  source_user = alfred_all$author_handle[reply_rows],
+  target_uri  = alfred_all$in_reply_to[reply_rows],
+  target_user = alfred_all$author_handle[reply_parent_match]
+)
+
+# Display the first 20 reply relationships
+head(reply_check, 20)
+```
+
+This step creates a table to examine reply relationships between users. The source_user represents the account that wrote the reply, while the target_user represents the author of the original post being replied to. The target_uri identifies the original post through its URI.
+
+If the original post cannot be matched within the collected dataset, target_user returns an NA value. This does not mean that the target user did not reply back, but that the original post could not be matched using the available data. Therefore, only reply relationships with identifiable target accounts can be included in the network using this method
+
+*Filter usable reply relationships*
+```{r}
+# Keep only replies where both source and target users are identified
+reply_edges <- reply_check[
+  !is.na(reply_check$source_user) &
+  !is.na(reply_check$target_user),
+]
+
+# Count usable reply relationships
+nrow(reply_edges)
+
+# Inspect the first 20 usable reply relationships
+head(reply_edges, 20)
+```
+After identifying the matched reply relationships, this step removes observations where either the source or target user cannot be identified
+
+*Inspect Mention Interaction Data*
+```{r}
+# Check how mention information is stored
+class(alfred_all$mentions)
+
+# Check the data type inside the mentions column
+unique(sapply(alfred_all$mentions, class))
+
+# Inspect the first 10 posts that contain mention information
+mention_rows <- which(
+  lengths(alfred_all$mentions) > 0)
+
+head(alfred_all$mentions[mention_rows],10)
+```
+The mentions variable is stored as a list-column. Posts without mentions contain NULL values, while posts with mentions contain character values. The inspected mention values are stored as DID identifiers rather than user handles.
+
+*Count Mention Interactions*
+```{r}
+# Count posts containing at least one mention
+mention_posts <- length(mention_rows)
+mention_posts
+
+# Count the total number of mentions
+total_mentions <- sum(
+  lengths(alfred_all$mentions))
+total_mentions
+```
+Based on the result,the number of post of mention is 122, and the figure for total mentions is 146. For mention interactions, a user can be mentioned without replying to the post. However, the current method only identifies mention targets that can be matched with the available author information in the dataset. Therefore, some mentioned accounts may not be included in the final network, even though they were mentioned in a post. This is a limitation of the network construction method.
+
+*Prepare Individual Mention Records*
+```{r}
+# Convert the mentions list into individual mention records
+mention_target_did <- unlist(
+  alfred_all$mentions[mention_rows],
+  use.names = FALSE
+)
+
+# Repeat each post row according to its number of mentions
+mention_source_rows <- rep(
+  mention_rows,
+  lengths(alfred_all$mentions[mention_rows])
+)
+
+# Create a table of potential mention relationships
+mention_check <- data.frame(
+  source_user = alfred_all$author_handle[mention_source_rows],
+  target_did  = mention_target_did
+)
+
+# Check the number of mention relationships
+nrow(mention_check)
+
+# Inspect the first 20
+head(mention_check, 20)
+```
+
+*Check Whether Author DID Is Available*
+```{r}
+# Extract the DID from each author's information
+author_did <- sapply(
+  alfred_all$author_data,
+  function(author) author$did)
+
+# Create a lookup table linking DID to user handle
+author_lookup <- data.frame(
+  did = author_did,
+  handle = alfred_all$author_handle)
+
+# Inspect the first 10 DID-to-handle mappings
+head(author_lookup, 10)
+```
+
+*Match Mention DIDs to User Handles*
+```{r}
+# Match each mentioned DID with the author lookup table
+mention_target_match <- match(
+  mention_check$target_did,
+  author_lookup$did)
+
+# Add the corresponding target user handle
+mention_check$target_user <- author_lookup$handle[
+  mention_target_match]
+
+# Count successfully identified mention targets
+mention_targets_found <- sum(
+  !is.na(mention_check$target_user))
+mention_targets_found
+
+# Calculate the proportion of matched mention targets
+mention_mapping_rate <-
+  mention_targets_found / nrow(mention_check)
+mention_mapping_rate
+
+# Inspect the first 20 mention relationships
+head(mention_check, 20)
+```
+
+*Check Quote Interactions*
+```{r}
+# Identify posts with recorded quote information
+quote_rows <- which(
+  !is.na(alfred_all$quotes))
+
+# Count posts with quote information
+quote_posts <- length(quote_rows)
+quote_posts
+
+# Inspect the first 5 recorded quote values
+head(alfred_all$quotes[quote_rows], 5)
+```
+*Create the Final Interaction Edge List*
+```{r}
+# Keep identifiable mention relationships
+usable_mentions <- mention_check[
+  !is.na(mention_check$source_user) &
+  !is.na(mention_check$target_user),
+  c("source_user", "target_user")]
+
+# Combine reply and mention interactions
+interaction_edges <- rbind(
+  reply_edges[, c("source_user", "target_user")],
+  usable_mentions)
+# Count self-interactions before removing them
+sum(interaction_edges$source_user == interaction_edges$target_user)
+
+# Remove self-interactions
+interaction_edges <- interaction_edges[
+  interaction_edges$source_user != interaction_edges$target_user,]
+
+# Check the number of interaction records
+nrow(interaction_edges)
+```
+This step combines the identifiable reply and mention relationships into a single interaction edge list. Initially, 128 identifiable reply relationships and 57 identifiable mention relationships were combined, resulting in 185 interaction records. In addition, the self-interactions were removed because the analysis focuses on interactions between different users. A total of 91 self-interactions were removed during this process. After this process, we can see that 94 interaction records remained and were used to construct the user interaction network.
+
+*Build the Directed Interaction Network*
+```{r}
+# Create a directed network from the interaction edge list
+interaction_network <- graph_from_data_frame(
+  interaction_edges,
+  directed = TRUE)
+
+# Display the network summary
+interaction_network
+```
+Based on the result, we illustrates that this step converts the combined reply and mention relationships into a directed user interaction network. The resulting network contains 125 users and 94 directed interaction edges. Each vertex represents a Bluesky user, while each directed edge represents an identifiable reply or mention from one user to another.
+
+*Network Density*
+```{r}
+# Calculate how densely users are connected
+network_density <- edge_density(
+  interaction_network)
+
+network_density
+```
+the network density measures how connected the users are in the network.Moreover, the percentage of density is about 0.61%, indicating that the network was sparse and only a small proportion of possible user connections were observed.
+
+*Degree Centrality*
+```{r}
+# Calculate total direct connections for each user
+degree_scores <- degree(interaction_network, mode = "all")
+
+# Show the 10 users with the highest degree
+top_degree <- sort(degree_scores, decreasing = TRUE) [1:10]
+top_degree
+```
+This step show that the degree centrality shows how many direct connections each user has. The results show that "thesaturdaypaper.com.au" had the most connections, which has 11 direct connection. The 'peggysanders.bsky.social' and 'theguardian.com' 
+
+*Betweenness Centrality*
+```{r}
+# Calculate bridging positions for each user
+betweenness_scores <- betweenness( interaction_network, directed = TRUE)
+
+# Show the 10 users with the highest betweenness
+top_betweenness <- sort( betweenness_scores, decreasing = TRUE)[1:10]
+
+top_betweenness
+```
+this step demonstrates that 'Betweenness centrality' shows which users act as bridges between other users in the network. The number of "zoom.earth " is the highest betweenness scorce about 6, followed by "trishgreenhalgh.bsky.social", and 'australia.theguardian.com' about 4. This suggests that these accounts occupied stronger bridging positions in the network.
+
+*Visualise the Interaction Network*
+```{r}
+# Plot the user interaction network
+plot(interaction_network,vertex.size = 5, 
+     vertex.label = NA,edge.arrow.size = 0.3)
+```
+The network graph shows the interactions between users. Each node represents a user, and each arrow represents a reply or mention. The graph shows that the network contains many small and separated connections, which is consistent with the low network density.
+
+*Plot subgraph*
+```{r}
+# Identify connected components in the network
+network_components <- components(
+  interaction_network,
+  mode = "weak"
+)
+
+# Select the largest connected component
+largest_component <- which.max(network_components$csize)
+
+# Create a subgraph containing its users
+network_subgraph <- induced_subgraph(
+  interaction_network,
+  vids = V(interaction_network)[
+    network_components$membership == largest_component
+  ]
+)
+
+# Display the subgraph size
+network_subgraph
+```
+```{r}
+# Visualise the largest connected subgraph
+set.seed(123)
+
+plot(
+  network_subgraph,
+  layout = layout_with_fr(network_subgraph),
+  vertex.size = 12,
+  vertex.label = V(network_subgraph)$name,
+  vertex.label.cex = 0.6,
+  vertex.color = "skyblue",
+  edge.arrow.size = 0.4,
+  main = "Largest Connected Component of User Interaction Network"
+)
+```
+
+The largest weakly connected component was selected as a subgraph to examine the most connected part of the observed user interaction network. This approach allows the relationships between users to be visualised more clearly while retaining the original direction of reply and mention interactions.
+
+
+*Interpretation*
+The final network contained 125 users and 94 reply or mention interaction edges. The network density was 0.0061, which shows that the network was sparse and there were relatively few connections between users.However, this does not mean that all users had the same roles in the network. Since repeated interactions were kept, degree centrality counts direct interaction edges, not necessarily the number of different users connected. For example, thesaturdaypaper.com.au had the highest degree score of 11, while zoom.earth had the highest betweenness score of 6. This shows that having more direct interactions does not always mean that a user has a stronger bridging role.
+
+The largest subgraph contained 11 users and 10 directed edges, which was only a small part of the full network. This also shows that the network was fragmented, as even the largest connected component had relatively few users.Overall, the interactions were quite dispersed, although some accounts had more important positions in the network. However, these findings are based only on the interactions that could be identified in the collected dataset, so they cannot represent all Bluesky activity related to Tropical Cyclone Alfred.
+
+*Report*
+- Question 3: 
+- Network Construction
+This study constructed a directed network that captured the interactions that occurred during the discussion about Tropical Cyclone Alfred on Bluesky, focusing on two types of interactions  replies and mentions. A node corresponds to a user account on Bluesky and a directed edge represents an interaction between two users. For instance, when user A responds to another user B's post or mentions B, an edge is added between A and B. This can help indicate the originator and recipient of the interaction.Only interactions were considered where both users could be retrieved in the collected data set were included in the network building process. Suppose someone replied to a post that didn't match the data set  this would not allow the target user to be identified. The same applies to mentions: some mentioned accounts may not have been able to be matched with the available author information. All these interactions and self-interactions were not included in the network.
+This means that although things may have happened on Bluesky, they may not have been recorded in the interactions section. Thus, the network does not represent all the interactions related to Tropical Cyclone Alfred, but only those that were possible in light of the data collected. This is relevant when interpreting the results since some interactions are missing which could impact the network structure and the scores of centrality. In summary, the network facilitates the identification of the most central accounts in terms of links to other accounts, and of the accounts that were central in bridging between other accounts in the observed network.
+- Overall Network Structure
+The study took the accounts that have the most accounts connected to them in the network to explore the interaction structure among the accounts. Further, the study only considered account linkage and did not consider the direction of linkage. The interaction dimension in the figure is still represented, however. Given the output, the number of accounts is 11 and there are 10 directed edges, both of which are extremely low. Rather than every account interacting with each other, some accounts are linked together via other accounts like “zoom.earth” or “trishgreenhalgh.bsky.social.” This indicates that, although a group may have the most connections, it only makes up a small percentage of the accounts in the building network, and also illustrates that accounts will be split into a number of small groups rather than a single large interconnected network.The relationships of reply and mention were identified in the collected data and 125 user accounts (nodes) and 94 directed edges were included in the final interaction network. The results are the interactions detected from the conversations about Tropical Cyclone Alfred on Bluesky. Network density was adopted to analyse the connectedness of these accounts as the ratio of connections present in a network to all possible connections within a network (Himelboim et al. 2017). Low network density was observed in the results with 0.0061. This implies that only a limited number of the possible links between the 125 accounts could be detected in the built network.
+- Subgraph Analysis
+The network visualisation also implies that the accounts were not related to one another in large groups. Many accounts, however, were published in smaller or standalone magazines. The analysis of connection patterns and groups can be helpful for comprehending network interactions in social networks (Himelboim et al. 2017).This does not necessarily imply that Bluesky users were less active during Tropical Cyclone Alfred, given the low density. Others respond and refer to relationships that were not available in the data set that was provided. If network data is missing, it may impact network characteristics measurement and interpretation (Smith, Moody & Morgan 2017). The low density is not necessarily a sign that Bluesky users had less interactions overall in the event, but rather as a characteristic of the network that was built based on identifiable interactions.
+- Centrality Analysis
+Degree centrality results show that the account 'thesaturdaypaper.com.au' has the most connections (11), followed by 'peggysanders.bsky.social' and 'theguardian.com' with 6 connections each. As to betweenness centrality, 'zoom.earth' has the highest (6), followed by 'trishgreenhalgh.bsky.social' and 'australia.theguardian.com' with 4.It is interesting to note that high degree centrality does not indicate high betweenness centrality. For example, ‘thesaturdaypaper.com.au' has the closest links, while ‘zoom.earth' has a more central role in the network. This shows that the number of direct connections and bridging role have different attributes of the accounts (Das, Samanta & Pal 2018). A few of the reply and mention interactions were not included as these were not possible to match on the target accounts within the data set, which might have affected the centrality results. Thus, conclusions are made only from what was noted in the observed network.
+- Findings and Limitations
+Overall, the results show that the interaction network observed for RQ3 is not densely connected, but is rather divided into a number of small clusters. Some accounts have many direct connections, but they are not necessarily the most salient ones as bridging nodes.The study has also two important limitations, however. First, the data collected does not cover all interactions with Bluesky or about Storm Alfred, and therefore may not be a true picture of user activity on the platform. Second, some “reply” and “mention” interactions were not included in the method of network construction due to the inability to match the target accounts in the data. This could have influenced the number of connections, the network topology, and centrality measures, and therefore the total picture observed.
+As such, the results should be considered only in the context of the network created and not be extrapolated to the Bluesky as a whole.
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
