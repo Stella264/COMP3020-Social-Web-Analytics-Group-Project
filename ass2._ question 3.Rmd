@@ -408,11 +408,28 @@ Overall, the results show that the interaction network observed for RQ3 is not d
 As such, the results should be considered only in the context of the network created and not be extrapolated to the Bluesky as a whole.
  
 *References*
-Das, K, Samanta, S & Pal, M 2018, ‘Study on centrality measures in social networks: a survey’, Social Network Analysis and Mining, vol. 8, article 13, viewed 9 October 2026, https://doi.org/10.1007/s13278-018-0493-2.
+Das, K, Samanta, S & Pal, M 2018, ‘Study on centrality measures in social networks: a survey’, Social Network Analysis and Mining, vol. 8, article 13, viewed 9 October 2026,  https://doi.org/10.1007/s13278-018-0493-2.
+
+Feinerer, I., Hornik, K., & Meyer, D. (2008). Text mining infrastructure in R. Journal of Statistical Software, 25(5), 1–54. https://doi.org/10.18637/jss.v025.i05
+
+Grimmer, J., & Stewart, B. M. (2013). Text as data: The promise and pitfalls of automatic content analysis methods for political texts. Political Analysis, 21(3), 267–297. https://doi.org/10.1093/pan/mps028
+
+Gruber, J. B., Guinaudeau, B., & Votta, F. (2025). atrrr: Wrapper for the 'AT' Protocol behind 'Bluesky' [R package]. https://doi.org/10.32614/CRAN.package.atrrr
 
 Himelboim, I, Smith, MA, Rainie, L, Shneiderman, B & Espina, C 2017, ‘Classifying Twitter topic-networks using social network analysis’, Social Media + Society, vol. 3, no. 1, pp. 1–13, viewed 9 October 2026, https://doi.org/10.1177/2056305117691545.
 
+Karimiziarani, M & Moradkhani, H 2023, 'Social response and disaster management: Insights from Twitter data assimilation on Hurricane Ian', International Journal of Disaster Risk Reduction, vol. 95, article 103865, doi:10.1016/j.ijdrr.2023.103865. 
+
+Porter, M. F. (1980). An algorithm for suffix stripping. Program, 14(3), 130–137. https://doi.org/10.1108/eb046814
+
 Smith, JA, Moody, J & Morgan, J 2017, ‘Network sampling coverage II: the effect of non-random missing data on network measurement’, Social Networks, vol. 48, pp. 78–99, viewed 9 October 2026, https://doi.org/10.1016/j.socnet.2016.04.005.
+
+Son, J, Lee, HK, Jin, S & Lee, J 2019, 'Content features of tweets for effective communication during disasters: A media synchronicity theory perspective', International Journal of Information Management, vol. 45, pp. 56–68, doi:10.1016/j.ijinfomgt.2018.10.012. 
+
+Takahashi, B, Tandoc, EC & Carmichael, C 2015, 'Communicating on Twitter during a disaster: An analysis of tweets during Typhoon Haiyan in the Philippines', Computers in Human Behavior, vol. 50, pp. 392–398, doi:10.1016/j.chb.2015.04.020. 
+
+
+
 
 
 
