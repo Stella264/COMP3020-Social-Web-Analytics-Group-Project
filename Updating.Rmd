@@ -1,0 +1,1193 @@
+---
+title: "Social Web Analytics of Tropical Cyclone Alfred on Bluesky"
+author: "COMP3020 – Social Web Analytics"
+date: "9 October 2026"
+output:
+  pdf_document:
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
+---
+\begin{center}
+\Large\textbf{Group 15}
+\end{center}
+
+\vspace{0.5cm}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.6}
+\begin{tabular}{|p{6cm}|p{3cm}|p{3cm}|}
+\hline
+\textbf{Group Members} & \textbf{Student ID} & \textbf{Contribution} \\
+\hline
+Phuong Linh Le & 22113467 & 34\% \\
+\hline
+Mai Khanh Ngoc Tran & 22180754 & 33\% \\
+\hline
+Tran Truc Thanh DINH & 22110241 & 33\% \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.5cm}
+
+**GitHub Repository:**
+
+https://github.com/Stella264/COMP3020-Social-Web-Analytics-Group-Project
+
+\newpage
+The atrrr R package, an interface for the AT Protocol behind Bluesky, was utilised to collect Bluesky posts; the search term "Cyclone Alfred" was used for the collection and it spanned from February 23rd to March 16th, 2025. Data retrieval was conducted through daily search windows.
+```{r, eval=FALSE}
+# Load the package used for Bluesky data collection
+library(atrrr)
+```
+```{r, eval=FALSE, include=FALSE}
+# Initial API test - Retrieve a small sample to inspect the Bluesky data structure
+alfred_test <- search_skeet(
+  "Cyclone Alfred",
+  sort = "latest",
+  since = "2025-02-23",
+  limit = 100
+)
+# Inspect the dimensions and available variables in the initial sample
+dim(alfred_test)
+names(alfred_test)
+# Inspect key variables relevant to the project
+head(alfred_test[, c(
+  "created_at",
+  "author_handle",
+  "text",
+  "reply_count",
+  "repost_count",
+  "like_count"
+)])
+# Check the actual temporal coverage returned by the API
+range(alfred_test$created_at)
+head(sort(alfred_test$created_at))
+tail(sort(alfred_test$created_at))
+```
+```{r, eval=FALSE}
+# Inspect the available arguments of search_skeet before defining the collection period
+args(search_skeet)
+```
+```{r, eval=FALSE, include=FALSE}
+# Test retrieval across the full event period using a single API request
+alfred_event <- search_skeet(
+  "Cyclone Alfred",
+  sort = "latest",
+  since = "2025-02-23",
+  until = "2025-03-17",
+  limit = 500
+)
+
+# Examine the coverage of the initial event-level retrieval
+dim(alfred_event)
+range(alfred_event$created_at, na.rm = TRUE)
+length(unique(alfred_event$author_handle))
+table(as.Date(alfred_event$created_at))
+```
+```{r, eval=FALSE, include=FALSE}
+# 1. Check the dataset size
+dim(alfred_event)
+# 2. Check the actual date range
+range(alfred_event$created_at, na.rm = TRUE)
+# 3. Check the number of unique authors
+length(unique(alfred_event$author_handle))
+# 4. Check the number of posts per day
+table(as.Date(alfred_event$created_at))
+```
+```{r, eval=FALSE, include=FALSE}
+# Check the number of posts that are replies
+sum(!is.na(alfred_event$in_reply_to))
+# Calculate the total number of replies received
+sum(alfred_event$reply_count, na.rm = TRUE)
+# Calculate the total number of reposts
+sum(alfred_event$repost_count, na.rm = TRUE)
+# Calculate the total number of quotes
+sum(alfred_event$quote_count, na.rm = TRUE)
+# Check the number of posts containing mentions
+sum(lengths(alfred_event$mentions) > 0, na.rm = TRUE)
+# Check the number of posts containing links
+sum(lengths(alfred_event$links) > 0, na.rm = TRUE)
+```
+```{r, eval=FALSE, include=FALSE}
+# Test data retrieval for the earlier period of the event
+alfred_before <- search_skeet(
+  "Cyclone Alfred",
+  sort = "latest",
+  since = "2025-02-23",
+  until = "2025-03-05",
+  limit = 500
+)
+```
+```{r, eval=FALSE, include=FALSE}
+# Check the dataset size
+dim(alfred_before)
+# Check the actual date range returned
+range(alfred_before$created_at, na.rm = TRUE)
+# Check the number of unique authors
+length(unique(alfred_before$author_handle))
+```
+```{r, eval=FALSE, include=FALSE}
+# Test data retrieval using a one-day search window
+alfred_23feb <- search_skeet(
+  "Cyclone Alfred",
+  sort = "latest",
+  since = "2025-02-23",
+  until = "2025-02-24",
+  limit = 500
+)
+```
+```{r, eval=FALSE, include=FALSE}
+# Check the dataset size
+dim(alfred_23feb)
+# Check the actual date range returned
+range(alfred_23feb$created_at, na.rm = TRUE)
+# Check the number of unique authors
+length(unique(alfred_23feb$author_handle))
+```
+```{r, eval=FALSE}
+# Create a sequence of dates covering the full study period
+dates <- seq(
+  as.Date("2025-02-23"),
+  as.Date("2025-03-16"),
+  by = "day"
+)
+# Create an empty list to store the daily search results
+alfred_daily <- vector("list", length(dates))
+# Collect Bluesky posts separately for each day
+for (i in seq_along(dates)) {
+  # Define the start and end date for each daily search
+  start_date <- dates[i]
+  end_date <- start_date + 1
+  # Display the date currently being collected
+  cat("Collecting:", as.character(start_date), "\n")
+  # Retrieve posts containing the search term "Cyclone Alfred"
+  alfred_daily[[i]] <- search_skeet(
+    "Cyclone Alfred",
+    sort = "latest",
+    since = as.character(start_date),
+    until = as.character(end_date),
+    limit = 1000
+  )
+}
+```
+```{r, eval=FALSE}
+# Load dplyr for data manipulation
+library(dplyr)
+# Combine all daily search results into one final dataset
+alfred_all <- bind_rows(alfred_daily)
+# Check the size of the final dataset
+dim(alfred_all)
+# Check the actual date range of the final dataset
+range(alfred_all$created_at, na.rm = TRUE)
+# Check the number of unique authors
+length(unique(alfred_all$author_handle))
+# Check for duplicate posts based on URI
+sum(duplicated(alfred_all$uri))
+```
+```{r, eval=FALSE}
+# Check the number of posts collected per day
+table(as.Date(alfred_all$created_at))
+```
+```{r, eval=FALSE}
+# Check the number of posts that are replies
+sum(!is.na(alfred_all$in_reply_to))
+# Calculate the total number of replies received
+sum(alfred_all$reply_count, na.rm = TRUE)
+# Calculate the total number of reposts
+sum(alfred_all$repost_count, na.rm = TRUE)
+# Calculate the total number of quotes
+sum(alfred_all$quote_count, na.rm = TRUE)
+# Check the number of posts containing mentions
+sum(lengths(alfred_all$mentions) > 0, na.rm = TRUE)
+# Check the number of posts containing links
+sum(lengths(alfred_all$links) > 0, na.rm = TRUE)
+```
+```{r, eval=FALSE}
+# Save the final collected dataset for subsequent analysis
+# file.exists("alfred_all.rds")
+```
+# Data Collection
+# Data Understanding and Preparation
+## Step 1 - Load Dataset
+```{r, message=FALSE}
+# Load required package
+library(dplyr)
+# Load the shared dataset
+alfred_all_raw <- readRDS("Data/alfred_all.rds")
+# Create a working copy
+alfred_all <- alfred_all_raw
+# Initial check
+dim(alfred_all)
+```
+## Step 2 - Dataset Audit
+```{r}
+# Dataset class
+# class(alfred_all)
+# Dataset dimensions
+dim(alfred_all)
+# Variable names
+# names(alfred_all)
+# Variable types and structure
+# dplyr::glimpse(alfred_all)
+# Inspect first few records
+# head(alfred_all)
+# Check duplicate post identifiers
+sum(duplicated(alfred_all$uri))
+```
+## Step 3 - Missingness and Record Suitability
+```{r}
+# Number of missing values in each variable
+missing_values <- colSums(is.na(alfred_all))
+# missing_values
+sum(is.na(alfred_all$uri))
+sum(is.na(alfred_all$author_handle))
+sum(is.na(alfred_all$text))
+sum(is.na(alfred_all$created_at))
+sum(is.na(alfred_all$in_reply_to))
+sum(is.na(alfred_all$quotes))
+```
+## Step 4 - User and Temporal Coverage
+```{r}
+# Number of unique authors
+unique_users <- length(unique(alfred_all$author_handle))
+unique_users
+# Check created_at type
+class(alfred_all$created_at)
+# Actual post creation time range
+date_range <- range(alfred_all$created_at,na.rm = TRUE)
+date_range
+# Number of posts by date
+posts_per_day <- table(as.Date(alfred_all$created_at))
+# posts_per_day
+```
+## Step 5 - Text Quality
+```{r}
+# Missing text
+missing_text <- sum(is.na(alfred_all$text))
+missing_text
+# Blank / empty text
+blank_text <- sum(trimws(alfred_all$text) == "",na.rm = TRUE)
+blank_text
+# Posts containing usable non-empty text
+usable_text <- sum(
+  !is.na(alfred_all$text) &
+    trimws(alfred_all$text) != ""
+)
+usable_text
+# Inspect language variable
+# class(alfred_all$langs)
+# str(alfred_all$langs)
+# Number of language values attached to each post
+# table(lengths(alfred_all$langs))
+# Inspect actual language codes
+language_values <- unlist(alfred_all$langs,use.names = FALSE)
+# sort(
+  # table(language_values),
+  # decreasing = TRUE
+# )
+alfred_all$text_usable <-
+  !is.na(alfred_all$text) &
+  trimws(alfred_all$text) != ""
+table(alfred_all$text_usable)
+```
+## Step 6 - Link Preparation
+```{r}
+# Inspect links variable
+# class(alfred_all$links)
+# str(alfred_all$links)
+# Number of links recorded per post
+# table(lengths(alfred_all$links))
+# Number of posts with at least one recorded link
+posts_with_links <- sum(lengths(alfred_all$links) > 0)
+posts_with_links
+link_rows <- which(lengths(alfred_all$links) > 0)
+# head(alfred_all$links[link_rows],10)
+alfred_all$has_link <-lengths(alfred_all$links) > 0
+table(alfred_all$has_link)
+prop.table(
+  table(alfred_all$has_link)
+)
+```
+## Step 7 - Network Feasibility
+### 7A - Replies
+```{r}
+# Number of reply posts
+reply_posts <- sum(
+  !is.na(alfred_all$in_reply_to)
+)
+reply_posts
+# Inspect reply identifiers
+class(alfred_all$in_reply_to)
+# head(na.omit(alfred_all$in_reply_to),10)
+reply_rows <- which(!is.na(alfred_all$in_reply_to))
+reply_parent_match <- match(
+  alfred_all$in_reply_to[reply_rows],
+  alfred_all$uri
+)
+reply_parents_in_dataset <- sum(!is.na(reply_parent_match))
+reply_parents_in_dataset
+reply_mapping_rate <-
+  reply_parents_in_dataset /
+  length(reply_rows)
+reply_mapping_rate
+reply_example <- data.frame(
+  source_user =
+    alfred_all$author_handle[reply_rows],
+  target_uri =
+    alfred_all$in_reply_to[reply_rows],
+  target_user =
+    alfred_all$author_handle[reply_parent_match]
+)
+# head(reply_example, 10)
+```
+### 7B - Mentions
+```{r}
+# Number of posts containing mentions
+mention_posts <- sum(lengths(alfred_all$mentions) > 0)
+mention_posts
+# Inspect structure
+# class(alfred_all$mentions)
+# str(alfred_all$mentions)
+# Inspect non-empty mention examples
+mention_rows <- which(lengths(alfred_all$mentions) > 0)
+# head(alfred_all$mentions[mention_rows],10)
+# head(unlist(alfred_all$mentions[mention_rows],use.names = FALSE),20)
+```
+### 7C - Quotes
+```{r}
+# Inspect quotes variable
+# class(alfred_all$quotes)
+# str(alfred_all$quotes)
+# Number of posts with quote information
+quote_posts <- sum(!is.na(alfred_all$quotes))
+quote_posts
+# Inspect examples
+# head(na.omit(alfred_all$quotes),10)
+if (is.character(alfred_all$quotes)) {
+  quote_rows <- which(
+    !is.na(alfred_all$quotes)
+  )
+  quote_posts_in_dataset <- sum(
+    alfred_all$quotes[quote_rows] %in%
+      alfred_all$uri
+  )
+  quote_posts_in_dataset
+}
+```
+## Step 8 - Final Preparation Summary
+```{r}
+prep_summary <- data.frame(
+  Metric = c(
+    "Total posts",
+    "Total variables",
+    "Unique users",
+    "Duplicate URI",
+    "Missing created_at",
+    "Missing text",
+    "Blank text",
+    "Usable text posts",
+    "Posts with links",
+    "Reply posts",
+    "Reply parents found in dataset",
+    "Posts with mentions",
+    "Posts with quote information"
+  ),
+  Value = c(
+    nrow(alfred_all),
+    ncol(alfred_all),
+    unique_users,
+    sum(duplicated(alfred_all$uri)),
+    sum(is.na(alfred_all$created_at)),
+    missing_text,
+    blank_text,
+    usable_text,
+    posts_with_links,
+    reply_posts,
+    reply_parents_in_dataset,
+    mention_posts,
+    quote_posts
+  )
+)
+prep_summary
+date_range
+```
+# RQ1 - Content Themes
+
+**Research Question:** What information themes characterised Bluesky discussion during Tropical Cyclone Alfred?
+
+## 1 - Select Usable Text
+
+For the content analysis, we only selected posts with valid textual content.
+```{r}
+# Select usable text for content analysis
+rq1_text <- alfred_all$text[alfred_all$text_usable]
+```
+## 2 - Text Preprocessing
+
+The chosen posts were transformed into a text corpus and processed prior to the term frequency analysis with the tm package. This package is an open-source tool for conducting text mining within R (Feinerer et al., 2008). All unsupported symbols, URLs, numbers, punctuation, common English stop words, and query-specific terms were removed from the data.
+```{r, message=FALSE}
+# Load the package for text processing
+library(tm)
+```
+```{r, warning=FALSE}
+# Create a text corpus
+rq1_corpus <- Corpus(VectorSource(rq1_text))
+# Convert text to ASCII to remove unsupported symbols and emojis
+rq1_corpus <- tm_map(
+  rq1_corpus,
+  content_transformer(function(x) iconv(x, to = "ASCII", sub = ""))
+)
+```
+```{r, warning=FALSE}
+# 2.1 - Remove URLs from the corpus
+rq1_corpus <- tm_map(
+  rq1_corpus,
+  content_transformer(function(x) gsub("http\\S+|www\\S+", "", x))
+)
+```
+```{r, warning=FALSE}
+# 2.2 - Convert all text to lowercase
+rq1_corpus <- tm_map(rq1_corpus,content_transformer(tolower))
+```
+```{r, warning=FALSE}
+# 2.3 - Remove numbers from the corpus
+rq1_corpus <- tm_map(rq1_corpus,removeNumbers)
+```
+```{r, warning=FALSE}
+# 2.4 - Remove punctuation from the corpus
+rq1_corpus <- tm_map(rq1_corpus,removePunctuation)
+```
+```{r, warning=FALSE}
+# 2.5 - Remove common English stopwords
+rq1_corpus <- tm_map(rq1_corpus,removeWords,stopwords("english"))
+```
+```{r, warning=FALSE}
+# 2.6 - Remove query-specific words
+custom_stopwords <- c("cyclone", "alfred")
+rq1_corpus <- tm_map(
+  rq1_corpus,
+  removeWords,
+  custom_stopwords
+)
+```
+```{r, warning=FALSE}
+# 2.7 - Remove extra whitespace
+rq1_corpus <- tm_map(rq1_corpus,stripWhitespace)
+```
+## 3 - Initial Term-Frequency Analysis
+
+To identify the most frequent terms and decide whether additional text preprocessing, we built an initial TDM (Term Document Matrix), which supported by the text mining framework describe by Feinerer et al.(2008).
+```{r}
+# Create the initial Term-Document Matrix
+rq1_tdm <- TermDocumentMatrix(rq1_corpus)
+# Calculate initial term frequencies
+rq1_term_frequency <- rowSums(as.matrix(rq1_tdm))
+# Display the 20 most frequent terms
+sort(rq1_term_frequency, decreasing = TRUE)[1:20]
+```
+The initial term frequency results helped detect limited analytical value words and to assess whether related word forms were being counted separately. So, these  checks informed the final text cleaning process before the main results were interpreted.
+
+### 3.1 - Inspect Potentially Uninformative Terms
+
+Frequently used words seemed to have less useful information were examined within the original posts before deciding if they should be removed.
+```{r, echo=TRUE, results='hide'}
+# Inspect the context of potentially uninformative frequent terms
+terms_to_check <- c("will", "now", "make", "news", "live")
+for (term in terms_to_check) {
+  # Find posts containing the selected term
+  matched_posts <- rq1_text[
+    grepl(paste0("\\b", term, "\\b"), tolower(rq1_text))
+  ]
+  # Display the term and three example posts
+  cat("\n\n--- TERM:", term, "---\n")
+  print(head(matched_posts, 3))
+}
+```
+This showed that *will*, *now*, and *make* were largely generic and provided limited information about the cyclone discussion. In contrast, *news* and *live* were retained as they frequently appeared in posts sharing news coverage and real time event updates. Therefore, *will*, *now*, and *make* were removed as additional stopwords.
+```{r, warning=FALSE}
+# Remove additional uninformative words identified through context inspection
+additional_stopwords <- c("will", "now", "make")
+rq1_corpus <- tm_map(rq1_corpus,removeWords,additional_stopwords)
+# Remove extra whitespace created after removing additional words
+rq1_corpus <- tm_map(rq1_corpus,stripWhitespace)
+```
+### 3.2 - Check Related Word Forms
+
+To see whether different word forms representing the same concept were being counted separately, we examined different forms of frequent occurring words.
+```{r}
+# Check whether related word forms are splitting term frequencies
+stem_check_terms <- c(
+  "flood", "flooded", "flooding",
+  "warn", "warned", "warning", "warnings",
+  "prepare", "prepared", "preparing",
+  "impact", "impacted", "impacts"
+)
+rq1_term_frequency[
+  intersect(stem_check_terms, names(rq1_term_frequency))
+]
+```
+From the result, we can see *flood*, *flooded*, and *flooding*, as well as different forms of *warning*, *prepare*, and *impact*, appeared as separate terms. Therefore, stemming was applied to consolidate related word forms and reduce fragmentation in the term frequency analysis, based on the approach described by Porter (1980).
+```{r, warning=FALSE}
+# Stem related word forms to a common root
+rq1_corpus <- tm_map(rq1_corpus,stemDocument)
+```
+```{r, warning=FALSE}
+# Remove residual query terms after stemming
+rq1_corpus <- tm_map(rq1_corpus,removeWords,c("cyclonealfr", "tcalfr", "cyclon"))
+rq1_corpus <- tm_map(rq1_corpus, stripWhitespace)
+
+```
+## 4 - Final Term-Frequency Analysis
+
+Once the text preprocessing was completed the TDM and term frequencies were recalculated.
+```{r}
+# Recreate the Term-Document Matrix after final text preprocessing
+rq1_tdm <- TermDocumentMatrix(rq1_corpus)
+# Recalculate term frequencies after stemming
+rq1_term_frequency <- rowSums(as.matrix(rq1_tdm))
+# Display the 20 most frequent terms
+# sort(rq1_term_frequency, decreasing = TRUE)[1:20]
+```
+The final frequency results show that Bluesky discussion was mainly focused on the cyclone's geographic location, development, and impacts. Geographic terms such as: *Queensland*, *Brisbane*, *coast*, and *NSW*. They suggest substantial attention to areas affected or threatened by the cyclone. Weather and eventrelated terms such as *tropical*, *storm*, *wind*, *landfall*, and *rain* were also prominent, reflecting ongoing discussion of the cyclone's movement and conditions. Terms including *flood*, *power*, and *prepare* suggest attention to potential or actual consequences and preparedness, while *news*, *live*, and *update* suggest that real time information sharing was also prominent.
+
+## 5 - Visualisation
+
+### 5.1 - Prepare Top 20 Terms
+
+```{r}
+# Prepare the Top 20 frequent terms for visualisation
+rq1_top20 <- sort(rq1_term_frequency,decreasing = TRUE)[1:20]
+# Convert the Top 20 terms into a data frame
+rq1_top20_df <- data.frame(term = names(rq1_top20),
+  frequency = as.numeric(rq1_top20)
+)
+# Display the prepared data
+# rq1_top20_df
+```
+### 5.2 - Create Readable Labels
+
+Because stemming produces shortened word forms, readable labels were used in the visualisations without changing the original calculated frequencies.
+```{r}
+# Create readable labels for stemmed terms in visualisations
+rq1_top20_df$display_term <- c(
+  "Tropical",
+  "Queensland",
+  "Coast",
+  "Brisbane",
+  "Australia",
+  "News",
+  "Flood",
+  "March",
+  "NSW",
+  "Live",
+  "Wind",
+  "Storm",
+  "Landfall",
+  "Ex-tropical",
+  "Rain",
+  "Power",
+  "Update",
+  "Hit",
+  "South",
+  "Prepare"
+)
+
+# Check that display labels match the original stemmed terms
+# rq1_top20_df[, c("term", "display_term", "frequency")]
+```
+### 5.3 - Top 20 Term-Frequency Bar Chart
+
+A horizontal bar chart was used to compare the relative prominence of the 20 most frequent terms.
+```{r, message=FALSE}
+# Load packages for data visualisation
+library(ggplot2)
+library(RColorBrewer)
+# Visualise the Top 20 most frequent terms
+ggplot(
+  rq1_top20_df,
+  aes(
+    x = reorder(display_term, frequency),
+    y = frequency
+  )
+) +
+  geom_col(fill = "steelblue") +
+  geom_text(
+    aes(label = frequency),
+    hjust = -0.15,
+    size = 3.5
+  ) +
+  coord_flip() +
+  labs(
+    title = "Top 20 Most Frequent Terms",
+    subtitle = "Bluesky discussion of Tropical Cyclone Alfred",
+    x = NULL,
+    y = "Frequency",
+    caption = "Related word forms were consolidated using stemming; readable labels are shown."
+  ) +
+  expand_limits(
+    y = max(rq1_top20_df$frequency) * 1.12
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 11),
+    axis.text = element_text(size = 10),
+    panel.grid.major.y = element_blank()
+  )
+```
+The bar chart highlights the high frequency of geographic and weather-related terms in the discussion. Terms associated with flooding, power, preparation, and information updates also appeared frequently, suggesting that discussions were not limited to tracking the cyclone but also covered preparation, impacts, and real-time information sharing.
+
+### 5.4 - Word Cloud
+
+A word cloud was created as a supplementary visualisation of the most frequent words, where larger text representing higher term frequencies.
+```{r}
+library(wordcloud)
+# Create word cloud data from RQ1 term frequencies
+rq1_wc <- data.frame(
+  term = names(rq1_term_frequency),
+  frequency = as.numeric(rq1_term_frequency)
+)
+# Apply readable labels from Top 20
+rq1_wc$display_term <- rq1_wc$term
+matched <- match(rq1_wc$term, rq1_top20_df$term)
+rq1_wc$display_term[!is.na(matched)] <-
+  rq1_top20_df$display_term[matched[!is.na(matched)]]
+# Additional readable labels
+extra_labels <- c(
+  "prepar" = "Preparation",
+  "resid" = "Residents",
+  "peopl" = "People",
+  "extrop" = "Ex-tropical",
+  "updat" = "Update",
+  "forecast" = "Forecast",
+  "warn" = "Warning",
+  "southeast" = "Southeast"
+)
+idx <- match(rq1_wc$term, names(extra_labels))
+rq1_wc$display_term[!is.na(idx)] <-unname(extra_labels[idx[!is.na(idx)]])
+# Select top 40 terms
+rq1_wc <- rq1_wc[rq1_wc$term != "cyclonealfr",]
+rq1_wc <- rq1_wc[order(-rq1_wc$frequency), ]
+rq1_wc <- head(rq1_wc, 40)
+# Colour palette
+wc_palette <- c(
+  "#F29D38",
+  "#E96C91",
+  "#16A6A0",
+  "#8054B8",
+  "#238BC4",
+  "#183F78"
+)
+set.seed(123)
+word_colors <- sample(
+  rep(wc_palette, length.out = nrow(rq1_wc))
+)
+# Create word cloud
+set.seed(123)
+wordcloud(
+  words = rq1_wc$display_term,
+  freq = rq1_wc$frequency,
+  scale = c(3.0, 0.85),
+  min.freq = 0,
+  max.words = 40,
+  random.order = FALSE,
+  rot.per = 0,
+  colors = word_colors,
+  ordered.colors = TRUE,
+  family = "sans"
+)
+```
+The word cloud provides a complementary visual summary of the dominant vocabulary. The frequent appearance of terms related to locations, weather, impacts, and information is consistent with the patterns observed in the term-frequency analysis and bar chart.
+
+## 6 - Contextual Interpretation
+
+To support the interpretation of the term-frequency patterns without pre-defining themes,a reproducible random sample of 30 posts from the full set of usable posts was selected for reviewing their original context.
+```{r}
+# Prepare all usable posts for contextual interpretation
+rq1_context <- alfred_all %>%
+  filter(text_usable) %>%
+  select(author_handle, created_at, text)
+# Check the number of posts available for contextual interpretation
+dim(rq1_context)
+```
+Then, 6,792 posts with usable text, providing the full pool used for random sampling.
+```{r}
+# Set a seed so the random sample can be reproduced
+set.seed(123)
+# Randomly sample posts from the full usable-text dataset
+rq1_context_sample <- rq1_context %>%slice_sample(n = 30)
+# Check the sample size
+dim(rq1_context_sample)
+```
+A fixed random seed was set to make the selection reproducible. The resulting sample consisted of 30 posts drawn from the full usable-text dataset.
+
+### 6.1 - Inspect Sampled Posts
+
+The sampled posts were reviewed using their original textual content to provide context for the trends observed in the word-frequency analysis.
+```{r, echo=TRUE, results='hide'}
+# Display the text of all 30 randomly sampled posts
+options(tibble.width = Inf)
+rq1_context_sample %>%
+  arrange(created_at) %>%
+  select(text) %>%
+  print(n = 30, width = Inf)
+```
+The review of the sampled posts revealed several recurring topics, including: cyclone forecasts and changing landfall conditions; public warnings and preparation; flooding and other disruptions, and post-event recovery. The sample also included some posts that were primarily links or only indirectly related to the main discussion, which were not forced into the identified themes.
+
+### 6.2 - Check Temporal Distribution
+
+The posting dates of the 30 sampled posts were examined to understand the temporal coverage of the random sample.
+```{r}
+# Check the temporal distribution of the random context sample
+table(as.Date(rq1_context_sample$created_at))
+```
+Most of the sampled posts were published between 4 and 9 March. This reflects the original dataset, where posting activity was substantially higher around the cyclone's approach, landfall, and immediate aftermath. The sample was therefore retained in its original random form rather than artificially balancing the number of posts across dates.
+
+### 6.3 - Prepare Posts for Context Review
+
+To facilitate a structured review, the sampled posts were organised chronologically and assigned post IDs.
+```{r, echo=TRUE, results='hide'}
+# Prepare the random sample for systematic context review
+rq1_context_review <- rq1_context_sample %>%
+  arrange(created_at) %>%
+  mutate(post_id = row_number()) %>%
+  select(post_id, created_at, author_handle, text)
+# Check the review dataset
+dim(rq1_context_review)
+```
+```{r, echo=TRUE, results='hide'}
+# Display reviewed posts with safe text encoding
+rq1_context_review %>%
+  mutate(text = iconv(text, from = "UTF-8",
+                      to = "ASCII", sub = "")) %>%
+  select(post_id, text) %>%
+  print(n = 30, width = Inf)
+```
+The review of original posts offered additional evidence for four recurring information themes: **storm tracking and weather updates, preparedness and warnings, impacts and disruption, and post-event impacts and recovery**. The content covered changing forecasts and landfall conditions, preparation for possible power outages, flooding and transport disruption, and later discussion of cleaning and recovery activities. The sample was used to assist in explaining of the broader term-frequency patterns instead of measuring how common each theme was across the full dataset.
+
+### RQ1 Summary
+
+Taken together, the combined term-frequency patterns and contextual inspection indicate four key information themes in Bluesky discussion of Tropical Cyclone Alfred: **storm tracking and weather updates, preparedness and warnings, impacts and disruption, and post-event impacts and recovery**. Discussion was geographically centred on Queensland, Brisbane and northern New South Wales, while the prominence of terms associated with news, live coverage and updates suggests that Bluesky also functioned as a channel for real-time information sharing throughout the cyclone event.
+
+### RQ1 Limitations
+
+Several limitations should be considered in this analysis. First, term-frequency analysis identifies frequently used words but cannot completely reflect their meanings within the original posts. According to Grimmer and Stewart (2013), automated text analysis requires careful interpretation and validation rather than relying solely on numerical results. Although stemming helps consolidate related word forms, it may also reduce linguistic detail.Second, the contextual interpretation was based on a random sample of 30 posts from 6,792 usable posts. Therefore, the four identified themes should be understood as repeated patterns supported by the analysis, rather than exhaustive categories or estimates of theme prevalence. Finally, the dataset was limited to Bluesky posts collected using cyclone-related search terms during the selected study period, so the findings may not fully reflect all public conversations about Tropical Cyclone Alfred.
+
+# Question 2
+## 2.1. Data Preparation and Text Representation
+Based on the discussion about Tropical Cyclone Alfred, the frequency analysis of
+words, and the contextual analysis of the posts, RQ1 was able to find several 
+key content themes. RQ2 extends from data intensity to posts to determine 
+whether posts form thematic clusters.
+```{r}
+# Step 1 - Prepare metadata for RQ2
+
+# Create a Q2 dataset using the same usable-text posts as RQ1
+rq2_data <- alfred_all %>%
+  # Keep the original row number so each post can be tracked later
+  mutate(original_row = row_number()) %>%
+  # Retain only posts with usable, non-empty text
+  filter(text_usable) %>%
+  # Keep variables required for clustering interpretation
+  # and the later link-sharing hypothesis test
+  select(original_row, uri, author_handle, created_at, text, has_link)
+```
+```{r, warning=FALSE, message=FALSE}
+# Create an RQ2-specific copy of the cleaned corpus
+rq2_corpus <- rq1_corpus
+
+# Remove residual URL/domain artefacts identified in the clustering terms
+rq2_corpus <- tm_map(rq2_corpus, removeWords, c("youtubecomwatchverz",
+    "youtubenspgsru", "theconversationcomcyclonealfr"))
+
+rq2_corpus <- tm_map(rq2_corpus, stripWhitespace)
+```
+In order to keep the two research questions consistent, valid text posts are 
+reused as well as the same dataset processed in RQ1. Only the remaining 
+URL/domain elements in the RQ2 text store are removed; variable `links` and 
+`has_link` are retained for hypothesis testing.
+```{r, warning=FALSE, message=FALSE}
+# Step 2 - Create TF-IDF representation
+
+# Create a Term-Document Matrix from the cleaned corpus
+rq2_tdm <- TermDocumentMatrix(rq2_corpus)
+
+# Apply TF-IDF weighting
+rq2_tfidf <- weightTfIdf(rq2_tdm)
+```
+Importantly, the usable documents are represented by TF-IDF to emphasize various
+possibly highly distinguished terms of the posts, rather than words that occur
+frequently in many different documents.
+```{r}
+# Step 3 - Prepare the TF-IDF matrix for clustering
+
+# Convert the TF-IDF matrix so that:
+# rows = posts/documents
+# columns = terms
+rq2_matrix <- t(as.matrix(rq2_tfidf))
+
+# Identify documents with no remaining terms after preprocessing
+rq2_row_sums <- rowSums(rq2_matrix)
+
+empty_docs <- which(rq2_row_sums == 0)
+
+# Check how many empty documents were found
+length(empty_docs)
+```
+
+```{r}
+#Step 3.1: Remove empty documents
+
+# Identify documents that still contain at least one term
+non_empty_docs <- rq2_row_sums > 0
+
+# Remove empty documents from the TF-IDF matrix
+rq2_matrix <- rq2_matrix[
+  non_empty_docs,
+  ,
+  drop = FALSE
+]
+
+# Remove the same documents from the Q2 metadata
+# to keep posts aligned with their link-sharing status
+rq2_data <- rq2_data[
+  non_empty_docs,
+]
+
+# Confirm that each document still matches one metadata row
+nrow(rq2_matrix) == nrow(rq2_data)
+```
+## 2.2. Clustering Method and Distance Choice
+```{r}
+# Step 4 - Create a reproducible sample for clustering
+
+# Fix the random seed so the same sample is selected every time
+set.seed(123)
+
+# Select 1,000 posts from the non-empty documents
+sample_size <- 1000
+
+sample_id <- sample(1:nrow(rq2_matrix), sample_size, replace = FALSE)
+
+# Create the sampled TF-IDF matrix
+rq2_sample_matrix <- rq2_matrix[
+  sample_id,
+  ,
+  drop = FALSE
+]
+
+# Keep the matching metadata rows
+rq2_sample_data <- rq2_data[
+  sample_id,
+]
+
+# Check dimensions
+dim(rq2_sample_matrix)
+dim(rq2_sample_data)
+
+# Confirm that text vectors and metadata remain aligned
+nrow(rq2_sample_matrix) == nrow(rq2_sample_data)
+```
+Using 1,000 posts, cosine distance or multidimensional ratio calculations of 
+pairwise comparisons of documents and clustering can be repeated with 
+`set.seed(123)` in order to get the same sample for analysis. Link share ratios 
+in the sample are also compared with the full clustering dataset for clustering 
+to see the consistency of the action variable which is core to RQ2. 
+```{r}
+# Compare link-sharing proportions in the full clustering data
+# and the random sample
+prop.table(table(rq2_data$has_link))
+
+prop.table(table(rq2_sample_data$has_link))
+```
+
+```{r}
+# Step 5 - Calculate cosine distance
+
+# Normalise each TF-IDF document vector to unit length
+rq2_norm_matrix <- diag(1 / sqrt(rowSums(rq2_sample_matrix^2))) %*% 
+  rq2_sample_matrix
+
+# Calculate cosine distance
+rq2_distance <- dist(rq2_norm_matrix, method = "euclidean")^2 / 2
+
+# Check the number of sampled documents
+N <- nrow(rq2_sample_matrix)
+N
+
+# Check the dimensions of the distance matrix
+dim(as.matrix(rq2_distance))
+```
+
+```{r}
+# Step 6 - Project cosine distances into Euclidean space using MDS
+
+# Number of sampled documents
+N <- nrow(rq2_sample_matrix)
+
+# Use a high-dimensional MDS representation for clustering
+# to preserve as much of the cosine-distance information as possible
+rq2_mds <- cmdscale(rq2_distance, k = N - 1)
+
+# Check the dimensions of the MDS representation
+dim(rq2_mds)
+```
+The selection was made because of the characteristic of the TF-IDF data which 
+has varying document length and frequency. First Vectors were normalized then 
+distance was calculated. Next, MDS was used to map the cosine distance 
+relationship in Euclidean space to apply K-means. The clustering process would 
+be performed in the multidimensional MDS forum, and the 2D mapping would only 
+be used for visualisation.
+
+## 2.3. Selecting the Number of Clusters
+```{r}
+# Step 7 - Select the number of clusters using the Elbow Method
+
+set.seed(123)
+
+# Store the within-cluster sum of squares for 1 to 15 clusters
+n <- 15
+SSW <- rep(0, n)
+
+for (a in 1:n) {
+  
+  K <- kmeans(
+    rq2_mds,
+    centers = a,
+    nstart = 20
+  )
+  
+  SSW[a] <- K$tot.withinss
+}
+
+# Display the SSW values
+SSW
+
+# Plot the elbow curve
+plot(1:15, SSW, type = "b", xlab = "Number of Clusters",
+  ylab = "Within-Cluster Sum of Squares (SSW)",
+  main = "Elbow Method Using Cosine Distance and MDS"
+)
+```
+Similar to the Elbow curve, there is a gradual downward trend in SSW without an 
+inflection point at the Elbow curve. Thus, Elbow curve analysis cannot be clear 
+to determine k, which must be done using some other method. K=3 is too broad 
+because the content related to monitoring and effects has not been analyzed. 
+K = 5 is more segmented but only causes the already large content to be broken 
+into smaller parts with very little reduction in the SSW. K=4 gives an optimal 
+separation of segmentation and topic separation because of the following 
+prominent functional separations. Thus, K=4 is selected as the optimum 
+clustering solution.
+```{r}
+# Step 8 - Compare candidate cluster solutions
+
+set.seed(123)
+
+K3 <- kmeans(rq2_mds, centers = 3, nstart = 20)
+
+K4 <- kmeans(rq2_mds, centers = 4, nstart = 20)
+
+K5 <- kmeans(rq2_mds, centers = 5, nstart = 20)
+
+# Compare cluster sizes
+table(K3$cluster)
+table(K4$cluster)
+table(K5$cluster)
+```
+
+```{r}
+# Step 9 - Inspect top terms for candidate cluster solutions
+
+show_top_terms <- function(K, matrix, top_n = 10) {
+  
+  for (cluster_number in sort(unique(K$cluster))) {
+    
+    # Identify posts assigned to the current cluster
+    cluster_posts_id <- which(K$cluster == cluster_number)
+    
+    # Extract their original TF-IDF document vectors
+    cluster_posts <- matrix[
+      cluster_posts_id,
+      ,
+      drop = FALSE
+    ]
+    
+    # Calculate the mean TF-IDF weight of each term
+    cluster_term_weight <- colMeans(cluster_posts)
+    
+    # Display the highest-weighted terms
+    cat(
+      "\nCluster",
+      cluster_number,
+      "-",
+      length(cluster_posts_id),
+      "posts\n"
+    )
+    
+    print(sort(cluster_term_weight, decreasing = TRUE)[1:top_n])
+  }
+}
+```
+
+```{r}
+# Top terms for k = 3
+show_top_terms(K3, rq2_sample_matrix)
+```
+
+```{r}
+# Top terms for k = 4
+show_top_terms(K4, rq2_sample_matrix)
+```
+
+```{r}
+# Top terms for k = 5
+show_top_terms(K5, rq2_sample_matrix)
+```
+## 2.4. Final Cluster Results and Interpretation
+The cluster 3 contains 36 posts based on news reporting and preparation. 
+Common words that could be applied are news, country, event, and preparation. 
+Public warnings, flood prep and cyclone information are the primary topics. This 
+model is similar to the theory of Takahashi et al. (2015) who used social media 
+for diffusion and coordination of information during Typhoon Haiyan. This 
+cluster is deemed too small, however, and it is inferred that some news and 
+preparation content took part in the Alfred discussions in this cluster.
+
+The number of posts in Cluster 1 (70.1%) was the greatest, including personal 
+reactions, greetings, social commentary, political commentary and media posts. 
+The value system that Cluster 1 discussed on Bluesky does not only apply to 
+emergency news but also emerged as a space that allowed the more or less 
+integration of hurricane news and social reactions and perspectives. This is 
+akin to what Karimiziarani and Moradkhani (2023) referred to with Hurricane Ian.
+
+Cluster 4: 101 posts, about aftermath of cyclone, including flooding, power 
+outages, school closings and other issues. Most importantly, there was a 
+distinction in the discussion area between Group 2 and Group 4 - in the former, 
+the participants discussed what hazard the cyclone was moving, whereas in the 
+latter, they discussed what impact the cyclone was having.
+
+Lastly, Cluster 2 has 162 posts and it relates to tracking the path, location, 
+intensity, and timing of Cyclone Alfred. High-weighted TF-IDF terms such as 
+`tropic`, `queensland`, `coast`, `approach`, `categori`, and `landfal` suggest 
+this information group is focused on tracking the storm's development. This 
+forum could be considered a “Tracking and Landfall Updates” group because the 
+posts within it discuss where and when Cyclone Alfred will occur.
+```{r}
+# Step 10 - Inspect example original posts for the selected k = 4 solution
+
+# Store the selected clustering solution
+K <- K4
+
+# Add cluster assignments to the sampled metadata
+rq2_sample_data$cluster <- K$cluster
+
+# Inspect example original posts from each cluster
+for (cluster_number in 1:4) {
+
+  cat("\n\n--- Cluster", cluster_number, "---\n")
+
+  cluster_posts <- rq2_sample_data[
+    rq2_sample_data$cluster == cluster_number,
+  ]
+
+  print(head(cluster_posts$text, 10))
+}
+```
+
+```{r}
+# Step 11 - Visualise the selected four-cluster solution
+
+# Use the selected k = 4 solution
+K <- K4
+
+# Create a two-dimensional MDS representation for visualisation only
+rq2_mds2 <- cmdscale(rq2_distance, k = 2)
+
+# Plot the selected four-cluster solution
+plot(rq2_mds2, col = K$cluster, pch = 16, xlab = "MDS Dimension 1",
+  ylab = "MDS Dimension 2",
+  main = "Four Thematic Clusters in Cyclone Alfred Discussion"
+)
+
+legend("bottomright", legend = c(
+    "1 General Discussion and Reactions",
+    "2 Tracking and Landfall Updates",
+    "3 News Reporting and Preparedness",
+    "4 Impacts, Flooding and Disruptions"),
+  col = 1:4, pch = 16, cex = 0.65)
+```
+
+## 2.5. Link-Sharing Behaviour
+
+Four group themes were identified, and then the sharing of links between these 
+groups was considered. Cluster 1 link was present in 41.37% of the posts, 
+cluster 2 link 42.59% of the posts, Cluster 3 link 11.11% of the posts and 
+Cluster 4 link 32.67% of the posts. An important point is that Cluster 3, which 
+was called News Reporting and Preparation, was characterized by a very low 
+percentage of links. That is, the message need not be transmitted through 
+hypertext links or resources in news oriented/preparing content material. 
+Son et al. (2019) identified similar properties to the URLs that can be utilized 
+in multiple ways in disaster communications. Thus, some observations indicate a 
+possible influence of linking behavior on the thematic context and it is 
+recommended to be analyzed statistically in subsequent studies
+
+```{r}
+# Step 12 - Examine link-sharing across thematic clusters
+
+# Create a contingency table of cluster and link-sharing status
+link_table <- table(rq2_sample_data$cluster, rq2_sample_data$has_link)
+
+link_table
+
+# Calculate within-cluster link-sharing proportions
+link_proportions <- prop.table(link_table, margin = 1)
+
+round(link_proportions * 100, 2)
+```
+
+## 2.6. Hypothesis Testing
+
+The Pearson's Chi-squared Test of Independence was conducted to explore the 
+level of significance of the relationship between clustering and link-sharing 
+behavior. The null hypothesis ($H₀$) is that there is no relation between the two 
+variables and the alternative hypothesis ($H₁$) is that there is a relationship, 
+of some sort, between the two variables. All the expected frequencies are > 5, 
+so the conditions for using the Pearson Chi-squared test are met. The final 
+result of the test is $\chi^2(3) = 15.766,\ p = .001266$. Since $p < .05$, $H₀$ is 
+rejected. This indicates that the clustering membership in the sample is 
+associated with their link sharing behavior. It also demonstrates that this 
+association does not take place in a cause-and-effect manner.
+```{r}
+# Step 13 - Test the association between cluster and link sharing
+
+# Perform a chi-squared test of independence
+link_chisq <- chisq.test(link_table)
+
+# Display the test result
+link_chisq
+
+# Check expected frequencies
+link_chisq$expected
+
+# Extract the p-value
+link_chisq$p.value
+```
+
+## 2.7. RQ2 Finding and Limitations
+
+In RQ2, posts about Tropical Cyclone Alfred were identified as having possible 
+thematic relations with four clusters, but there was still an unevenness in the 
+discussion system. In this context, General Discussion and Reactions accounted 
+for 70.1% of the time in the sample and it was not only used to communicate 
+forecast and emergency information, but also personal response.
+
+Furthermore, as for content, link sharing has differed across thematic clusters. 
+Pearson’s Chi-squared Test of Independence indicated a statistically significant 
+relationship between the cluster and posting a link ($\chi^2(3) = 15.766,\ p = .001266$)
+suggesting that there are different types of discussions to be assisted by 
+different ways of sharing information. The clustering was done within the scope 
+of a sample of 1000 randomly selected posts; however, some topics that are less 
+discussed may not have been clustered correctly. The concept of clusters is 
+subjective, and Cluster 3 only consists of 36 posts, and `has_link` does not 
+imply the source or reliability of the article containing the link.
