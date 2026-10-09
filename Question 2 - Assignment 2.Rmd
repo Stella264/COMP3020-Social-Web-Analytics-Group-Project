@@ -1,0 +1,447 @@
+---
+title: "Assignment 2 - Question 2"
+output: pdf_document
+date: "2026-10-06"
+author: "Mai Khanh Ngoc Tran"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Question 2
+
+```{r}
+# Step 1 - Prepare metadata for RQ2
+
+# Create a Q2 dataset using the same usable-text posts as RQ1
+rq2_data <- alfred_all %>%
+  
+  # Keep the original row number so each post can be tracked later
+  mutate(original_row = row_number()) %>%
+  
+  # Retain only posts with usable, non-empty text
+  filter(text_usable) %>%
+  
+  # Keep variables required for clustering interpretation
+  # and the later link-sharing hypothesis test
+  select(
+    original_row,
+    uri,
+    author_handle,
+    created_at,
+    text,
+    has_link
+  )
+
+# Check the number of posts and variables retained for RQ2
+dim(rq2_data)
+
+# Check the distribution of link-sharing status
+table(rq2_data$has_link)
+```
+
+```{r}
+# Step 2 - Create TF-IDF representation
+
+# Confirm that the cleaned corpus and Q2 metadata contain
+# the same number of posts
+length(rq1_corpus)
+nrow(rq2_data)
+```
+
+```{r}
+# Create a Term-Document Matrix from the cleaned corpus
+rq2_tdm <- TermDocumentMatrix(rq1_corpus)
+
+# Apply TF-IDF weighting
+rq2_tfidf <- weightTfIdf(rq2_tdm)
+
+# Check the dimensions of the TF-IDF matrix
+dim(rq2_tfidf)
+```
+
+```{r}
+# Step 3 - Prepare the TF-IDF matrix for clustering
+
+# Convert the TF-IDF matrix so that:
+# rows = posts/documents
+# columns = terms
+rq2_matrix <- t(as.matrix(rq2_tfidf))
+
+# Check the matrix dimensions
+dim(rq2_matrix)
+
+# Identify documents with no remaining terms after preprocessing
+rq2_row_sums <- rowSums(rq2_matrix)
+
+empty_docs <- which(rq2_row_sums == 0)
+
+# Check how many empty documents were found
+length(empty_docs)
+```
+
+
+```{r}
+#Step 3.1: Remove empty documents
+
+# Identify documents that still contain at least one term
+non_empty_docs <- rq2_row_sums > 0
+
+# Remove empty documents from the TF-IDF matrix
+rq2_matrix <- rq2_matrix[
+  non_empty_docs,
+  ,
+  drop = FALSE
+]
+
+# Remove the same documents from the Q2 metadata
+# to keep posts aligned with their link-sharing status
+rq2_data <- rq2_data[
+  non_empty_docs,
+]
+
+# Check the remaining dimensions
+dim(rq2_matrix)
+dim(rq2_data)
+
+# Confirm that each document still matches one metadata row
+nrow(rq2_matrix) == nrow(rq2_data)
+```
+
+
+```{r}
+# Step 4 - Create a reproducible sample for clustering
+
+# Fix the random seed so the same sample is selected every time
+set.seed(123)
+
+# Select 1,000 posts from the 6,418 non-empty documents
+sample_size <- 1000
+
+sample_id <- sample(
+  1:nrow(rq2_matrix),
+  sample_size,
+  replace = FALSE
+)
+
+# Create the sampled TF-IDF matrix
+rq2_sample_matrix <- rq2_matrix[
+  sample_id,
+  ,
+  drop = FALSE
+]
+
+# Keep the matching metadata rows
+rq2_sample_data <- rq2_data[
+  sample_id,
+]
+
+# Check dimensions
+dim(rq2_sample_matrix)
+dim(rq2_sample_data)
+
+# Confirm that text vectors and metadata remain aligned
+nrow(rq2_sample_matrix) == nrow(rq2_sample_data)
+```
+
+```{r}
+# Compare link-sharing proportions in the full clustering data
+# and the random sample
+prop.table(table(rq2_data$has_link))
+
+prop.table(table(rq2_sample_data$has_link))
+```
+
+
+```{r}
+# Step 5 - Calculate cosine distance
+
+# Normalise each TF-IDF document vector to unit length
+rq2_norm_matrix <- diag(
+  1 / sqrt(rowSums(rq2_sample_matrix^2))
+) %*% rq2_sample_matrix
+
+# Calculate cosine distance
+rq2_distance <- dist(
+  rq2_norm_matrix,
+  method = "euclidean"
+)^2 / 2
+
+# Check the number of sampled documents
+N <- nrow(rq2_sample_matrix)
+N
+
+# Check the dimensions of the distance matrix
+dim(as.matrix(rq2_distance))
+```
+
+```{r}
+# Step 6 - Project cosine distances into Euclidean space using MDS
+
+# Number of sampled documents
+N <- nrow(rq2_sample_matrix)
+
+# Use a high-dimensional MDS representation for clustering
+# to preserve as much of the cosine-distance information as possible
+rq2_mds <- cmdscale(
+  rq2_distance,
+  k = N - 1
+)
+
+# Check the dimensions of the MDS representation
+dim(rq2_mds)
+```
+
+
+```{r}
+# Step 7 - Select the number of clusters using the Elbow Method
+
+set.seed(123)
+
+# Store the within-cluster sum of squares for 1 to 15 clusters
+n <- 15
+SSW <- rep(0, n)
+
+for (a in 1:n) {
+  
+  K <- kmeans(
+    rq2_mds,
+    centers = a,
+    nstart = 20
+  )
+  
+  SSW[a] <- K$tot.withinss
+}
+
+# Display the SSW values
+SSW
+
+# Plot the elbow curve
+plot(
+  1:15,
+  SSW,
+  type = "b",
+  xlab = "Number of Clusters",
+  ylab = "Within-Cluster Sum of Squares (SSW)",
+  main = "Elbow Method Using Cosine Distance and MDS"
+)
+```
+
+
+```{r}
+# Step 8 - Compare candidate cluster solutions
+
+set.seed(123)
+
+K3 <- kmeans(
+  rq2_mds,
+  centers = 3,
+  nstart = 20
+)
+
+K4 <- kmeans(
+  rq2_mds,
+  centers = 4,
+  nstart = 20
+)
+
+K5 <- kmeans(
+  rq2_mds,
+  centers = 5,
+  nstart = 20
+)
+
+# Compare cluster sizes
+table(K3$cluster)
+table(K4$cluster)
+table(K5$cluster)
+```
+
+
+```{r}
+# Step 9 - Inspect top terms for candidate cluster solutions
+
+show_top_terms <- function(K, matrix, top_n = 10) {
+  
+  for (cluster_number in sort(unique(K$cluster))) {
+    
+    # Identify posts assigned to the current cluster
+    cluster_posts_id <- which(
+      K$cluster == cluster_number
+    )
+    
+    # Extract their original TF-IDF document vectors
+    cluster_posts <- matrix[
+      cluster_posts_id,
+      ,
+      drop = FALSE
+    ]
+    
+    # Calculate the mean TF-IDF weight of each term
+    cluster_term_weight <- colMeans(
+      cluster_posts
+    )
+    
+    # Display the highest-weighted terms
+    cat(
+      "\nCluster",
+      cluster_number,
+      "-",
+      length(cluster_posts_id),
+      "posts\n"
+    )
+    
+    print(
+      sort(
+        cluster_term_weight,
+        decreasing = TRUE
+      )[1:top_n]
+    )
+  }
+}
+```
+
+
+```{r}
+# Top terms for k = 3
+show_top_terms(
+  K3,
+  rq2_sample_matrix
+)
+```
+
+```{r}
+# Top terms for k = 4
+show_top_terms(
+  K4,
+  rq2_sample_matrix
+)
+```
+
+```{r}
+# Top terms for k = 5
+show_top_terms(
+  K5,
+  rq2_sample_matrix
+)
+```
+
+```{r}
+# Step 10 - Inspect representative posts for the selected k = 4 solution
+
+# Store the selected clustering solution
+K <- K4
+
+# Add cluster assignments to the sampled metadata
+rq2_sample_data$cluster <- K$cluster
+
+# Inspect a small number of original posts from each cluster
+for (cluster_number in 1:4) {
+  
+  cat("\n\n--- Cluster", cluster_number, "---\n")
+  
+  cluster_posts <- rq2_sample_data[
+    rq2_sample_data$cluster == cluster_number,
+  ]
+  
+  print(
+    head(
+      cluster_posts$text,
+      10
+    )
+  )
+}
+```
+
+
+```{r}
+# Step 11 - Visualise the selected four-cluster solution
+
+# Use the selected k = 4 solution
+K <- K4
+
+# Create a two-dimensional MDS representation for visualisation only
+rq2_mds2 <- cmdscale(
+  rq2_distance,
+  k = 2
+)
+
+# Plot posts using their final cluster assignments
+plot(
+  rq2_mds2,
+  col = K$cluster,
+  pch = 16,
+  xlab = "MDS Dimension 1",
+  ylab = "MDS Dimension 2",
+  main = "Four Thematic Clusters in Cyclone Alfred Discussion"
+)
+
+# Add cluster labels
+legend(
+  "bottomright",
+  legend = c(
+    "1 General discussion",
+    "2 Safety and preparedness",
+    "3 Impacts and outages",
+    "4 Tracking and updates"
+  ),
+  col = 1:4,
+  pch = 16,
+  cex = 0.7
+)
+```
+
+
+```{r}
+# Step 12 - Examine link-sharing across thematic clusters
+
+# Assign the final cluster labels to the sampled posts
+rq2_sample_data$cluster <- factor(K$cluster)
+
+# Create a contingency table of cluster and link-sharing status
+link_table <- table(
+  rq2_sample_data$cluster,
+  rq2_sample_data$has_link
+)
+
+# Display the number of posts with and without links
+link_table
+
+# Calculate link-sharing proportions within each cluster
+link_proportions <- prop.table(
+  link_table,
+  margin = 1
+)
+
+# Display percentages for easier comparison
+round(link_proportions * 100, 2)
+```
+
+```{r}
+# Step 13 - Test the association between cluster and link sharing
+
+# Perform a chi-squared test of independence
+link_chisq <- chisq.test(link_table)
+
+# Display the test result
+link_chisq
+
+# Check expected frequencies
+link_chisq$expected
+
+# Extract the p-value
+link_chisq$p.value
+```
+
+
+
+
+
+
+
+
+
+
+
+
