@@ -615,16 +615,35 @@ The bar chart highlights the high frequency of geographic and weather-related te
 
 A word cloud was created as a supplementary visualisation of the most frequent words, where larger text representing higher term frequencies.
 ```{r}
-# Load the package for word cloud visualisation
 library(wordcloud)
-# Create a readable word cloud from the final stemmed term frequencies
+# Prepare data
+rq1_wc <- rq1_wc[order(-rq1_wc$frequency), ]
+rq1_wc <- head(rq1_wc, 40)
+# Colour palette
+wc_palette <- c(
+  "#F29D38",  # Orange
+  "#E96C91",  # Pink
+  "#16A6A0",  # Teal
+  "#8054B8",  # Purple
+  "#238BC4",  # Blue
+  "#183F78"   # Navy
+)
+# Assign one colour to each word
+set.seed(123)
+word_colors <- sample(rep(wc_palette, length.out = nrow(rq1_wc)))
+# Create word cloud
+set.seed(123)
 wordcloud(
-  words = names(rq1_term_frequency),
-  freq = rq1_term_frequency,
-  min.freq = 200,
-  max.words = 50,
+  words = rq1_wc$display_term,
+  freq = rq1_wc$frequency,
+  scale = c(3.0, 0.85),
+  min.freq = 0,
+  max.words = 40,
   random.order = FALSE,
-  colors = brewer.pal(8, "Dark2")
+  rot.per = 0,
+  colors = word_colors,
+  ordered.colors = TRUE,
+  family = "sans"
 )
 ```
 The word cloud provides a complementary visual summary of the dominant vocabulary. The frequent appearance of terms related to locations, weather, impacts, and information is consistent with the patterns observed in the term-frequency analysis and bar chart.
