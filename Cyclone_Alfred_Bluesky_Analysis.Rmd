@@ -1,13 +1,41 @@
 ---
-title: "Social Web Analytics Project"
-author: "Phuong Linh Le"
-date: "2026-10-05"
+title: "Social Web Analytics of Tropical Cyclone Alfred on Bluesky"
+author: "COMP3020 – Social Web Analytics"
+date: "9 October 2026"
 output:
   pdf_document:
-    latex_engine: "xelatex"
+    latex_engine: xelatex
   html_document:
     df_print: paged
 ---
+\begin{center}
+\Large\textbf{Group 15}
+\end{center}
+
+\vspace{0.5cm}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.6}
+\begin{tabular}{|p{6cm}|p{3cm}|p{3cm}|}
+\hline
+\textbf{Group Members} & \textbf{Student ID} & \textbf{Contribution} \\
+\hline
+Phuong Linh Le & 22113467 & 34\% \\
+\hline
+Mai Khanh Ngoc Tran & 22180754 & 33\% \\
+\hline
+Tran Truc Thanh DINH & 22110241 & 33\% \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.5cm}
+
+**GitHub Repository:**
+
+https://github.com/Stella264/COMP3020-Social-Web-Analytics-Group-Project
+
+\newpage
 The atrrr R package, an interface for the AT Protocol behind Bluesky, was utilised to collect Bluesky posts; the search term "Cyclone Alfred" was used for the collection and it spanned from February 23rd to March 16th, 2025. Data retrieval was conducted through daily search windows.
 ```{r, eval=FALSE}
 # Load the package used for Bluesky data collection
@@ -615,16 +643,60 @@ The bar chart highlights the high frequency of geographic and weather-related te
 
 A word cloud was created as a supplementary visualisation of the most frequent words, where larger text representing higher term frequencies.
 ```{r}
-# Load the package for word cloud visualisation
 library(wordcloud)
-# Create a readable word cloud from the final stemmed term frequencies
+# Create word cloud data from RQ1 term frequencies
+rq1_wc <- data.frame(
+  term = names(rq1_term_frequency),
+  frequency = as.numeric(rq1_term_frequency)
+)
+# Apply readable labels from Top 20
+rq1_wc$display_term <- rq1_wc$term
+matched <- match(rq1_wc$term, rq1_top20_df$term)
+rq1_wc$display_term[!is.na(matched)] <-
+  rq1_top20_df$display_term[matched[!is.na(matched)]]
+# Additional readable labels
+extra_labels <- c(
+  "prepar" = "Preparation",
+  "resid" = "Residents",
+  "peopl" = "People",
+  "extrop" = "Ex-tropical",
+  "updat" = "Update",
+  "forecast" = "Forecast",
+  "warn" = "Warning",
+  "southeast" = "Southeast"
+)
+idx <- match(rq1_wc$term, names(extra_labels))
+rq1_wc$display_term[!is.na(idx)] <-unname(extra_labels[idx[!is.na(idx)]])
+# Select top 40 terms
+rq1_wc <- rq1_wc[rq1_wc$term != "cyclonealfr",]
+rq1_wc <- rq1_wc[order(-rq1_wc$frequency), ]
+rq1_wc <- head(rq1_wc, 40)
+# Colour palette
+wc_palette <- c(
+  "#F29D38",
+  "#E96C91",
+  "#16A6A0",
+  "#8054B8",
+  "#238BC4",
+  "#183F78"
+)
+set.seed(123)
+word_colors <- sample(
+  rep(wc_palette, length.out = nrow(rq1_wc))
+)
+# Create word cloud
+set.seed(123)
 wordcloud(
-  words = names(rq1_term_frequency),
-  freq = rq1_term_frequency,
-  min.freq = 200,
-  max.words = 50,
+  words = rq1_wc$display_term,
+  freq = rq1_wc$frequency,
+  scale = c(3.0, 0.85),
+  min.freq = 0,
+  max.words = 40,
   random.order = FALSE,
-  colors = brewer.pal(8, "Dark2")
+  rot.per = 0,
+  colors = word_colors,
+  ordered.colors = TRUE,
+  family = "sans"
 )
 ```
 The word cloud provides a complementary visual summary of the dominant vocabulary. The frequent appearance of terms related to locations, weather, impacts, and information is consistent with the patterns observed in the term-frequency analysis and bar chart.
