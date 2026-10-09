@@ -1,13 +1,41 @@
 ---
-title: "Social Web Analytics Project"
-author: "Phuong Linh Le"
-date: "2026-10-05"
+title: "Social Web Analytics of Tropical Cyclone Alfred on Bluesky"
+author: "COMP3020 – Social Web Analytics"
+date: "9 October 2026"
 output:
   pdf_document:
-    latex_engine: "xelatex"
+    latex_engine: xelatex
   html_document:
     df_print: paged
 ---
+\begin{center}
+\Large\textbf{Group 15}
+\end{center}
+
+\vspace{0.5cm}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.6}
+\begin{tabular}{|p{6cm}|p{3cm}|p{3cm}|}
+\hline
+\textbf{Group Members} & \textbf{Student ID} & \textbf{Contribution} \\
+\hline
+Phuong Linh Le & 22113467 & 34\% \\
+\hline
+Mai Khanh Ngoc Tran & 22180754 & 33\% \\
+\hline
+Tran Truc Thanh DINH & 22110241 & 33\% \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.5cm}
+
+**GitHub Repository:**
+
+https://github.com/Stella264/COMP3020-Social-Web-Analytics-Group-Project
+
+\newpage
 The atrrr R package, an interface for the AT Protocol behind Bluesky, was utilised to collect Bluesky posts; the search term "Cyclone Alfred" was used for the collection and it spanned from February 23rd to March 16th, 2025. Data retrieval was conducted through daily search windows.
 ```{r, eval=FALSE}
 # Load the package used for Bluesky data collection
