@@ -1241,7 +1241,7 @@ behavior. The null hypothesis (H₀) is that there is no relation between the tw
 variables and the alternative hypothesis (H₁) is that there is a relationship, 
 of some sort, between the two variables. All the expected frequencies are > 5, 
 so the conditions for using the Pearson Chi-squared test are met. The final 
-result of the test is χ2(3) = 15.766, p = .001266. Since p < .05, H₀ is 
+result of the test is X^2(3) = 15.766, p = .001266. Since p < .05, H₀ is 
 rejected. This indicates that the clustering membership in the sample is 
 associated with their link sharing behavior. It also demonstrates that this 
 association does not take place in a cause-and-effect manner.
@@ -1271,7 +1271,7 @@ forecast and emergency information, but also personal response.
 
 Furthermore, as for content, link sharing has differed across thematic clusters. 
 Pearson’s Chi-squared Test of Independence indicated a statistically significant 
-relationship between the cluster and posting a link (χ2(3) = 15.766, 
+relationship between the cluster and posting a link (X^2(3) = 15.766, 
 p = .001266) suggesting that there are different types of discussions to be 
 assisted by different ways of sharing information. The clustering was done 
 within the scope of a sample of 1000 randomly selected posts; however, some 
